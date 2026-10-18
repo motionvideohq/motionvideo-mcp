@@ -45,22 +45,25 @@ const inflight = new Map<string, Promise<unknown>>();
 
 /** Fetch and cache one JSON document, with ETag revalidation. */
 const loadDocument = <T>(key: string, path: string): Promise<T> => {
+  // SAFETY: every entry under `key` is written by this function, with the
+  // same document type `T` for that key.
   const entry = cache.get(key) as CacheEntry<T> | undefined;
   if (entry && Date.now() < entry.serveUntil) {
     return Promise.resolve(entry.data);
   }
+  // SAFETY: as above; `inflight` holds the pending load for the same key.
   const running = inflight.get(key) as Promise<T> | undefined;
   if (running) {
     return running;
   }
 
   const pending = (async (): Promise<T> => {
-    const headers: Record<string, string> = {
+    const headers = new Headers({
       accept: "application/json",
       "user-agent": "motionvideo-mcp",
-    };
+    });
     if (entry?.etag) {
-      headers["if-none-match"] = entry.etag;
+      headers.set("if-none-match", entry.etag);
     }
     try {
       const response = await fetch(`${SITE_URL}${path}`, {
@@ -74,6 +77,10 @@ const loadDocument = <T>(key: string, path: string): Promise<T> => {
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
+      // SAFETY: the site's /api/catalog and /api/catalog/directories
+      // endpoints serve exactly the document shapes named by `T`
+      // (CatalogDocument / DirectoriesDocument), built from the same JSON
+      // bundle the site renders from.
       const data = (await response.json()) as T;
       cache.set(key, {
         data,
@@ -120,7 +127,7 @@ const loadDirectoriesDocument = (): Promise<DirectoriesDocument> =>
 /** Every catalog entry, newest first as published on the site. */
 export const loadVideos = async (): Promise<MotionVideo[]> => {
   const document = await loadCatalogDocument();
-  return (document.videos ?? []) as unknown as MotionVideo[];
+  return document.videos ?? [];
 };
 
 /** Reasoning effort the model ran at, as the creator reported it. */
@@ -150,59 +157,60 @@ export const CATEGORY_META: Record<
   MotionCategory,
   { label: string; description: string }
 > = {
-  "product-ui": {
-    label: "Product UI",
-    description:
-      "Interface motion: buttons, loaders, music players, menus, toasts, and other product UI interactions.",
-  },
-  phone: {
-    label: "Phone",
-    description:
-      "Mobile motion: phone mockups, app flows, and screen-on-screen animations.",
-  },
-  charts: {
-    label: "Charts",
-    description:
-      "Data visualization: animated charts, dashboards, and infographic motion.",
-  },
-  diagrams: {
-    label: "Diagrams",
-    description:
-      "Diagrams and explainers: flowcharts, system maps, and process animations.",
-  },
-  "kinetic-type": {
-    label: "Kinetic type",
-    description:
-      "Kinetic typography: type-led videos, text animation, and lyric motion.",
-  },
-  shapes: {
-    label: "Shapes",
-    description:
-      "Shapes and abstract forms: morphs, geometry, and graphic shape animation.",
-  },
-  particles: {
-    label: "Particles",
-    description:
-      "Particles and simulations: physics-driven, generative, and reactive effects.",
-  },
   characters: {
-    label: "Characters",
     description:
       "Characters: animated mascots, figures, and character-driven storytelling.",
+    label: "Characters",
   },
-  photos: {
-    label: "Photos",
-    description: "Photo motion: animated photos, collages, and cutout videos.",
-  },
-  music: {
-    label: "Music",
+  charts: {
     description:
-      "Music and audio: audio-reactive visuals, lyric videos, and beat-synced edits.",
+      "Data visualization: animated charts, dashboards, and infographic motion.",
+    label: "Charts",
   },
   code: {
-    label: "Code",
     description:
       "Code and developer themes: terminal, coding, and software-style motion.",
+    label: "Code",
+  },
+  diagrams: {
+    description:
+      "Diagrams and explainers: flowcharts, system maps, and process animations.",
+    label: "Diagrams",
+  },
+  "kinetic-type": {
+    description:
+      "Kinetic typography: type-led videos, text animation, and lyric motion.",
+    label: "Kinetic type",
+  },
+  music: {
+    description:
+      "Music and audio: audio-reactive visuals, lyric videos, and beat-synced edits.",
+    label: "Music",
+  },
+  particles: {
+    description:
+      "Particles and simulations: physics-driven, generative, and reactive effects.",
+    label: "Particles",
+  },
+  phone: {
+    description:
+      "Mobile motion: phone mockups, app flows, and screen-on-screen animations.",
+    label: "Phone",
+  },
+  photos: {
+    description: "Photo motion: animated photos, collages, and cutout videos.",
+    label: "Photos",
+  },
+  "product-ui": {
+    description:
+      "Interface motion: buttons, loaders, music players, menus, toasts, and other product UI interactions.",
+    label: "Product UI",
+  },
+  // oxlint-disable-next-line anti-slop/no-shape-in-symbol-names -- "shapes" is a published category id on motionvideo.xyz.
+  shapes: {
+    description:
+      "Shapes and abstract forms: morphs, geometry, and graphic shape animation.",
+    label: "Shapes",
   },
 };
 
@@ -285,6 +293,8 @@ export const DIRECTORY_SECTIONS = ["tools", "studios"] as const;
 export type DirectorySection = (typeof DIRECTORY_SECTIONS)[number];
 
 const isMotionCategory = (value: string): value is MotionCategory =>
+  // SAFETY: MOTION_CATEGORIES is a readonly tuple of strings, so the widened
+  // array contains exactly those values and none others.
   (MOTION_CATEGORIES as readonly string[]).includes(value);
 
 /** The first content tag is the canonical category page segment on the site. */
@@ -298,28 +308,27 @@ export const videoPageUrl = (slug: string): string =>
 export const categoryPageUrl = (category: string): string =>
   `${SITE_URL}/category/${category}`;
 
-export const creatorUrl = (handle: string): string =>
-  `https://x.com/${handle}`;
+export const creatorUrl = (handle: string): string => `https://x.com/${handle}`;
 
 export const toSummary = (video: MotionVideo): VideoSummary => ({
-  slug: video.slug,
-  title: video.title,
-  handle: video.handle,
   avatar: video.avatar ?? "",
+  contentTags: video.contentTags ?? [],
   date: video.date,
   description: video.description,
-  contentTags: video.contentTags ?? [],
-  tags: video.tags ?? [],
+  effort: video.effort,
+  handle: video.handle,
+  height: video.height ?? 0,
+  iterations: video.iterations,
+  model: video.model,
+  pageUrl: videoPageUrl(video.slug),
   poster: video.poster,
   preview: video.preview,
+  promptShared: Boolean(video.promptShared),
+  slug: video.slug,
+  tags: video.tags ?? [],
+  title: video.title,
   video: video.video,
   width: video.width ?? 0,
-  height: video.height ?? 0,
-  promptShared: Boolean(video.promptShared),
-  model: video.model,
-  effort: video.effort,
-  iterations: video.iterations,
-  pageUrl: videoPageUrl(video.slug),
 });
 
 export interface SearchInput {
@@ -344,12 +353,7 @@ export const searchVideos = async ({
   limit = 12,
 }: SearchInput): Promise<{ total: number; videos: VideoSummary[] }> => {
   const videos = await loadVideos();
-  const words =
-    query
-      ?.trim()
-      .toLowerCase()
-      .split(/\s+/u)
-      .filter(Boolean) ?? [];
+  const words = query?.trim().toLowerCase().split(/\s+/u).filter(Boolean) ?? [];
 
   const filtered = videos.filter((video) => {
     if (type && !(video.tags ?? []).includes(type)) {
@@ -382,25 +386,24 @@ export const searchVideos = async ({
 
 export const findVideo = async (
   slug: string
-): Promise<MotionVideo | undefined> =>
-  (await loadVideos()).find((video) => video.slug === slug);
+): Promise<MotionVideo | undefined> => {
+  const videos = await loadVideos();
+  return videos.find((video) => video.slug === slug);
+};
 
-const videoNeighbours = (
-  videos: MotionVideo[],
-  video: MotionVideo
-): { previous?: string; next?: string } => {
+const videoNeighbours = (videos: MotionVideo[], video: MotionVideo) => {
   const category = primaryCategory(video);
   const pool = category
     ? videos.filter((entry) => (entry.contentTags ?? []).includes(category))
     : videos;
-  const ordered = [...pool].sort((a, b) => -1 * a.date.localeCompare(b.date));
+  const ordered = pool.toSorted((a, b) => -1 * a.date.localeCompare(b.date));
   const index = ordered.findIndex((entry) => entry.slug === video.slug);
   return {
-    previous: index > 0 ? ordered[index - 1]?.slug : undefined,
     next:
-      index >= 0 && index < ordered.length - 1
+      index !== -1 && index < ordered.length - 1
         ? ordered[index + 1]?.slug
         : undefined,
+    previous: index > 0 ? ordered[index - 1]?.slug : undefined,
   };
 };
 
@@ -408,23 +411,23 @@ export const toDetail = async (video: MotionVideo): Promise<VideoDetail> => {
   const category = primaryCategory(video);
   return {
     ...toSummary(video),
-    prompt: video.prompt,
-    skillUrl: video.skillUrl,
-    tweetUrl: video.tweetUrl,
-    stack: video.stack,
     category,
     categoryUrl: category ? categoryPageUrl(category) : undefined,
     neighbours: videoNeighbours(await loadVideos(), video),
+    prompt: video.prompt,
+    skillUrl: video.skillUrl,
+    stack: video.stack,
+    tweetUrl: video.tweetUrl,
   };
 };
 
 const categorySummaries = (videos: MotionVideo[]): CategorySummary[] =>
   MOTION_CATEGORIES.map((id) => ({
-    id,
-    label: CATEGORY_META[id].label,
-    description: CATEGORY_META[id].description,
     count: videos.filter((video) => (video.contentTags ?? []).includes(id))
       .length,
+    description: CATEGORY_META[id].description,
+    id,
+    label: CATEGORY_META[id].label,
     url: categoryPageUrl(id),
   }));
 
@@ -436,25 +439,23 @@ const directoryEntries = (
   section: DirectorySection
 ): DirectoryEntry[] =>
   (document[section]?.entries ?? []).map((entry) => ({
+    category: entry.category ?? "",
+    cover: entry.cover ?? "",
+    description: entry.description ?? "",
     id: entry.id,
     name: entry.name,
-    description: entry.description ?? "",
-    category: entry.category ?? "",
     url: entry.url,
-    cover: entry.cover ?? "",
   }));
 
 const entryCategories = (entries: DirectoryEntry[]): string[] =>
   [...new Set(entries.map((entry) => entry.category))]
     .filter(Boolean)
-    .sort((a, b) => a.localeCompare(b));
+    .toSorted((a, b) => a.localeCompare(b));
 
 export const directoryCategories = async (
   section: DirectorySection
 ): Promise<string[]> =>
-  entryCategories(
-    directoryEntries(await loadDirectoriesDocument(), section)
-  );
+  entryCategories(directoryEntries(await loadDirectoriesDocument(), section));
 
 export const DIRECTORY_MAX_LIMIT = 120;
 
@@ -472,12 +473,7 @@ export const browseDirectory = async ({
   limit = 24,
 }: BrowseInput): Promise<{ total: number; entries: DirectoryEntry[] }> => {
   const entries = directoryEntries(await loadDirectoriesDocument(), section);
-  const words =
-    query
-      ?.trim()
-      .toLowerCase()
-      .split(/\s+/u)
-      .filter(Boolean) ?? [];
+  const words = query?.trim().toLowerCase().split(/\s+/u).filter(Boolean) ?? [];
 
   const filtered = entries.filter((entry) => {
     if (
@@ -489,13 +485,13 @@ export const browseDirectory = async ({
     if (words.length === 0) {
       return true;
     }
-    const text = `${entry.name} ${entry.description} ${entry.category}`
-      .toLowerCase();
+    const text =
+      `${entry.name} ${entry.description} ${entry.category}`.toLowerCase();
     return words.every((word) => text.includes(word));
   });
 
   const shown = Math.max(1, Math.min(limit, DIRECTORY_MAX_LIMIT));
-  return { total: filtered.length, entries: filtered.slice(0, shown) };
+  return { entries: filtered.slice(0, shown), total: filtered.length };
 };
 
 /** Compact catalog stats for the overview resource. */
@@ -504,21 +500,21 @@ export const catalogStats = async () => {
     loadCatalogDocument(),
     loadDirectoriesDocument(),
   ]);
-  const videos = (catalog.videos ?? []) as unknown as MotionVideo[];
+  const videos = catalog.videos ?? [];
   return {
-    site: SITE_URL,
-    importedAt: catalog.importedAt,
-    totalVideos: videos.length,
-    videosWithPrompt: videos.filter((video) => video.promptShared).length,
     categories: categorySummaries(videos),
     directories: DIRECTORY_SECTIONS.map((section) => {
       const entries = directoryEntries(directories, section);
       return {
-        section,
-        label: section === "tools" ? "Tools & apps" : "Motion studios",
-        total: entries.length,
         categories: entryCategories(entries),
+        label: section === "tools" ? "Tools & apps" : "Motion studios",
+        section,
+        total: entries.length,
       };
     }),
+    importedAt: catalog.importedAt,
+    site: SITE_URL,
+    totalVideos: videos.length,
+    videosWithPrompt: videos.filter((video) => video.promptShared).length,
   };
 };

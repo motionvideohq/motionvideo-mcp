@@ -38,14 +38,9 @@ pnpm build      # production build in .mcp-use/build/
 
 ## Catalog data
 
-The [motionvideo.xyz](https://motionvideo.xyz) repo is the single source of truth.
-The server fetches the catalog live from the site's public JSON endpoints —
-[`/api/catalog`](https://motionvideo.xyz/api/catalog) (videos) and
-[`/api/catalog/directories`](https://motionvideo.xyz/api/catalog/directories)
-(tools & studios) — and caches each document in memory for 10 minutes.
+The [motionvideo.xyz](https://motionvideo.xyz) repo is the single source of truth. The server fetches the catalog live from the site's public JSON endpoints — [`/api/catalog`](https://motionvideo.xyz/api/catalog) (videos) and [`/api/catalog/directories`](https://motionvideo.xyz/api/catalog/directories) (tools & studios) — and caches each document in memory for 10 minutes.
 
-For local development against a local site checkout, point `MOTIONVIDEO_SITE_URL`
-at it:
+For local development against a local site checkout, point `MOTIONVIDEO_SITE_URL` at it:
 
 ```bash
 MOTIONVIDEO_SITE_URL=http://localhost:3000 pnpm dev

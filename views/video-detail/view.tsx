@@ -44,8 +44,8 @@ const formatDate = (isoDate: string): string => {
     return isoDate;
   }
   return parsed.toLocaleDateString("en-US", {
-    month: "short",
     day: "numeric",
+    month: "short",
     year: "numeric",
   });
 };
@@ -59,38 +59,131 @@ const copyText = async (text: string): Promise<boolean> => {
   }
 };
 
-function Chip({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "yellow" }) {
-  return (
-    <span
-      className={
-        tone === "yellow"
-          ? "inline-flex items-center rounded-full bg-[#FFBE25]/20 px-2 py-0.5 text-[11px] font-medium text-[#8a6200] dark:text-[#ffd875]"
-          : "inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
-      }
-    >
-      {children}
-    </span>
-  );
-}
+const Chip = ({
+  children,
+  tone = "neutral",
+}: {
+  children: React.ReactNode;
+  tone?: "neutral" | "yellow";
+}) => (
+  <span
+    className={
+      tone === "yellow"
+        ? "inline-flex items-center rounded-full bg-[#FFBE25]/20 px-2 py-0.5 text-[11px] font-medium text-[#8a6200] dark:text-[#ffd875]"
+        : "inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+    }
+  >
+    {children}
+  </span>
+);
 
-function DetailSkeleton() {
+const DetailSkeleton = () => (
+  <div className="flex animate-pulse flex-col gap-3 p-3">
+    <div className="aspect-video w-full rounded-xl bg-zinc-200 dark:bg-zinc-800" />
+    <div className="h-5 w-1/2 rounded bg-zinc-200 dark:bg-zinc-800" />
+    <div className="h-3 w-1/3 rounded bg-zinc-200 dark:bg-zinc-800" />
+    <div className="h-28 w-full rounded-xl bg-zinc-200 dark:bg-zinc-800" />
+  </div>
+);
+
+const MetaChips = ({ data }: { data: VideoDetail }) => {
+  const size =
+    data.width && data.height ? `${data.width}×${data.height}` : null;
   return (
-    <div className="flex animate-pulse flex-col gap-3 p-3">
-      <div className="aspect-video w-full rounded-xl bg-zinc-200 dark:bg-zinc-800" />
-      <div className="h-5 w-1/2 rounded bg-zinc-200 dark:bg-zinc-800" />
-      <div className="h-3 w-1/3 rounded bg-zinc-200 dark:bg-zinc-800" />
-      <div className="h-28 w-full rounded-xl bg-zinc-200 dark:bg-zinc-800" />
+    <div className="flex flex-wrap items-center gap-1.5">
+      {data.promptShared && <Chip tone="yellow">Prompt</Chip>}
+      {data.tags.includes("skill") && <Chip>Skill</Chip>}
+      {data.model && <Chip>{data.model}</Chip>}
+      {data.effort && <Chip>effort: {data.effort}</Chip>}
+      {data.iterations && <Chip>{data.iterations}</Chip>}
+      {data.stack && <Chip>{data.stack}</Chip>}
+      {size && <Chip>{size}</Chip>}
+      {data.contentTags.map((tag) => (
+        <Chip key={tag}>{tag}</Chip>
+      ))}
     </div>
   );
-}
+};
 
-export default function VideoDetailView() {
+const PromptBlock = ({ prompt }: { prompt: string }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    const ok = await copyText(prompt);
+    if (ok) {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/60">
+      <div className="flex items-center justify-between border-b border-zinc-200 px-3 py-2 dark:border-zinc-800">
+        <span className="text-xs font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
+          Prompt behind it
+        </span>
+        <button
+          type="button"
+          className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-zinc-300 px-2.5 py-1 text-xs text-zinc-600 transition-colors hover:bg-white dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          onClick={handleCopy}
+        >
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <pre className="m-0 max-h-72 overflow-y-auto px-3 py-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-zinc-700 dark:text-zinc-200">
+        {prompt}
+      </pre>
+    </div>
+  );
+};
+
+const NeighbourNav = ({
+  isPending,
+  next,
+  onSelect,
+  previous,
+}: {
+  isPending: boolean;
+  next?: string;
+  onSelect: (slug: string) => void;
+  previous?: string;
+}) => {
+  if (!previous && !next && !isPending) {
+    return null;
+  }
+  return (
+    <div className="flex items-center justify-between gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-900">
+      {previous ? (
+        <button
+          type="button"
+          className="cursor-pointer rounded-full border border-zinc-300 px-3 py-1 text-xs text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          onClick={() => onSelect(previous)}
+        >
+          ← {previous}
+        </button>
+      ) : (
+        <span />
+      )}
+      {isPending && <span className="text-xs text-zinc-400">Loading…</span>}
+      {next && (
+        <button
+          type="button"
+          className="cursor-pointer rounded-full border border-zinc-300 px-3 py-1 text-xs text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          onClick={() => onSelect(next)}
+        >
+          {next} →
+        </button>
+      )}
+    </div>
+  );
+};
+
+const VideoDetailView = () => {
   const view = useToolContext<"get-video">();
   const nav = useCallTool("get-video");
   const openExternal = useOpenExternal();
   const sendFollowUp = useSendFollowUp();
   const { hostCapabilities } = useHostContext();
-  const [copied, setCopied] = useState(false);
 
   const canOpenExternal = hostCapabilities?.openLinks !== undefined;
   const canFollowUp = hostCapabilities?.message !== undefined;
@@ -98,6 +191,27 @@ export default function VideoDetailView() {
   const openUrl = (url: string | undefined) => {
     if (url && canOpenExternal) {
       void openExternal({ url });
+    }
+  };
+
+  const goToVideo = async (slug: string) => {
+    try {
+      await nav.callTool({ slug });
+    } catch {
+      // Neighbour hops are a convenience; a failure keeps this video open.
+    }
+  };
+
+  const remixInChat = async (data: VideoDetail) => {
+    if (!canFollowUp) {
+      return;
+    }
+    try {
+      await sendFollowUp({
+        prompt: `Let's remake "${data.title}" (${data.pageUrl}) for my project. Adapt the original prompt to my brief — ask me what to change first — then build it.`,
+      });
+    } catch {
+      // The host refused the follow-up; the card stays usable either way.
     }
   };
 
@@ -113,8 +227,7 @@ export default function VideoDetailView() {
       return <DetailSkeleton />;
     }
 
-    const data: VideoDetail = (nav.data?.structuredContent as VideoDetail | undefined) ?? (view.toolOutput as VideoDetail);
-    const size = data.width && data.height ? `${data.width}×${data.height}` : null;
+    const data: VideoDetail = nav.data?.structuredContent ?? view.toolOutput;
 
     return (
       <div className="flex flex-col gap-3 p-3">
@@ -172,32 +285,14 @@ export default function VideoDetailView() {
               type="button"
               disabled={!canFollowUp}
               className="inline-flex cursor-pointer items-center rounded-full bg-black px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-black/85 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-white/85"
-              onClick={() => {
-                if (!canFollowUp) {
-                  return;
-                }
-                void sendFollowUp({
-                  prompt: `Let's remake "${data.title}" (${data.pageUrl}) for my project. Adapt the original prompt to my brief — ask me what to change first — then build it.`,
-                }).catch(() => {});
-              }}
+              onClick={() => remixInChat(data)}
             >
               Remix in chat
             </button>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
-          {data.promptShared && <Chip tone="yellow">Prompt</Chip>}
-          {data.tags.includes("skill") && <Chip>Skill</Chip>}
-          {data.model && <Chip>{data.model}</Chip>}
-          {data.effort && <Chip>effort: {data.effort}</Chip>}
-          {data.iterations && <Chip>{data.iterations}</Chip>}
-          {data.stack && <Chip>{data.stack}</Chip>}
-          {size && <Chip>{size}</Chip>}
-          {data.contentTags.map((tag) => (
-            <Chip key={tag}>{tag}</Chip>
-          ))}
-        </div>
+        <MetaChips data={data} />
 
         {data.description && (
           <p className="m-0 text-sm text-zinc-600 dark:text-zinc-300">
@@ -206,30 +301,7 @@ export default function VideoDetailView() {
         )}
 
         {data.prompt ? (
-          <div className="rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/60">
-            <div className="flex items-center justify-between border-b border-zinc-200 px-3 py-2 dark:border-zinc-800">
-              <span className="text-xs font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
-                Prompt behind it
-              </span>
-              <button
-                type="button"
-                className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-zinc-300 px-2.5 py-1 text-xs text-zinc-600 transition-colors hover:bg-white dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                onClick={() => {
-                  void copyText(data.prompt as string).then((ok) => {
-                    if (ok) {
-                      setCopied(true);
-                      window.setTimeout(() => setCopied(false), 1500);
-                    }
-                  });
-                }}
-              >
-                {copied ? "Copied" : "Copy"}
-              </button>
-            </div>
-            <pre className="m-0 max-h-72 overflow-y-auto px-3 py-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-zinc-700 dark:text-zinc-200">
-              {data.prompt}
-            </pre>
-          </div>
+          <PromptBlock key={data.slug} prompt={data.prompt} />
         ) : (
           <p className="m-0 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-400">
             No prompt was shared for this one — it works as a visual reference.
@@ -247,33 +319,12 @@ export default function VideoDetailView() {
           </button>
         )}
 
-        {(data.neighbours.previous || data.neighbours.next || nav.isPending) && (
-          <div className="flex items-center justify-between gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-900">
-            {data.neighbours.previous ? (
-              <button
-                type="button"
-                className="cursor-pointer rounded-full border border-zinc-300 px-3 py-1 text-xs text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                onClick={() => void nav.callTool({ slug: data.neighbours.previous as string })}
-              >
-                ← {data.neighbours.previous}
-              </button>
-            ) : (
-              <span />
-            )}
-            {nav.isPending && (
-              <span className="text-xs text-zinc-400">Loading…</span>
-            )}
-            {data.neighbours.next && (
-              <button
-                type="button"
-                className="cursor-pointer rounded-full border border-zinc-300 px-3 py-1 text-xs text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                onClick={() => void nav.callTool({ slug: data.neighbours.next as string })}
-              >
-                {data.neighbours.next} →
-              </button>
-            )}
-          </div>
-        )}
+        <NeighbourNav
+          isPending={nav.isPending}
+          next={data.neighbours.next}
+          onSelect={goToVideo}
+          previous={data.neighbours.previous}
+        />
       </div>
     );
   })();
@@ -285,7 +336,7 @@ export default function VideoDetailView() {
     if (view.status === "pending") {
       return "Loading a motion video detail from the catalog.";
     }
-    const data: VideoDetail = (nav.data?.structuredContent as VideoDetail | undefined) ?? (view.toolOutput as VideoDetail);
+    const data: VideoDetail = nav.data?.structuredContent ?? view.toolOutput;
     return `Motion video detail: "${data.title}" by @${data.handle} (slug ${data.slug}, ${data.pageUrl}).${data.prompt ? " The original prompt behind the video is visible." : " No prompt was shared for this entry."}`;
   })();
 
@@ -310,4 +361,6 @@ export default function VideoDetailView() {
       </div>
     </ThemeProvider>
   );
-}
+};
+
+export default VideoDetailView;

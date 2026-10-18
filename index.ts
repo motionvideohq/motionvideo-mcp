@@ -22,21 +22,21 @@ import {
 } from "./src/catalog.js";
 
 const server = new MCPServer({
+  description:
+    "The motionvideo.xyz catalog: AI-made motion videos with the prompts and skills behind them. Search references, pull original prompts to remix, and browse motion tools and studios.",
+  icons: [
+    {
+      mimeType: "image/svg+xml",
+      sizes: ["any"],
+      src: "icon.svg",
+    },
+  ],
+  instructions:
+    "Use search-videos to find motion video references (keywords and/or a content category), then get-video to read the original prompt and how it was made so you can adapt it. list-categories explains the catalog categories; browse-directory covers motion tools and studios. When you remix a prompt, credit the source video page.",
   name: "motionvideo",
   title: "MotionVideo",
   version: "1.0.0",
-  description:
-    "The motionvideo.xyz catalog: AI-made motion videos with the prompts and skills behind them. Search references, pull original prompts to remix, and browse motion tools and studios.",
-  instructions:
-    "Use search-videos to find motion video references (keywords and/or a content category), then get-video to read the original prompt and how it was made so you can adapt it. list-categories explains the catalog categories; browse-directory covers motion tools and studios. When you remix a prompt, credit the source video page.",
   websiteUrl: "https://motionvideo.xyz",
-  icons: [
-    {
-      src: "icon.svg",
-      mimeType: "image/svg+xml",
-      sizes: ["any"],
-    },
-  ],
 });
 
 // ---------------------------------------------------------------------------
@@ -54,7 +54,7 @@ server.use("mcp:tools/call", async (_ctx, next) => {
       throw error;
     }
     return {
-      content: [{ type: "text" as const, text: error.message }],
+      content: [{ text: error.message, type: "text" as const }],
       isError: true,
     };
   }
@@ -69,7 +69,7 @@ server.use("mcp:resources/read", async (ctx, next) => {
     }
     return {
       contents: [
-        { uri: ctx.params.uri, mimeType: "text/plain", text: error.message },
+        { mimeType: "text/plain", text: error.message, uri: ctx.params.uri },
       ],
     };
   }
@@ -85,8 +85,8 @@ server.use("mcp:prompts/get", async (_ctx, next) => {
     return {
       messages: [
         {
+          content: { text: error.message, type: "text" as const },
           role: "user" as const,
-          content: { type: "text" as const, text: error.message },
         },
       ],
     };
@@ -98,7 +98,8 @@ server.use("mcp:prompts/get", async (_ctx, next) => {
 const completeVideoSlug = async (value: string): Promise<string[]> => {
   try {
     const prefix = value.trim().toLowerCase();
-    return (await loadVideos())
+    const videos = await loadVideos();
+    return videos
       .map((video) => video.slug)
       .filter((slug) => slug.toLowerCase().startsWith(prefix));
   } catch {
@@ -111,63 +112,49 @@ const completeVideoSlug = async (value: string): Promise<string[]> => {
 // ---------------------------------------------------------------------------
 
 const videoSummarySchema = z.object({
-  slug: z.string().describe("Stable catalog id, e.g. stephanlivera-df17a2"),
-  title: z.string(),
-  handle: z.string().describe("Creator handle on X"),
   avatar: z.string().describe("Creator avatar image URL"),
+  contentTags: z.array(z.string()).describe("Motion content categories"),
   date: z.string().describe("Publish date (YYYY-MM-DD)"),
   description: z.string().optional(),
-  contentTags: z.array(z.string()).describe("Motion content categories"),
-  tags: z.array(z.string()).describe("Entry tags: prompt, skill, ..."),
+  effort: z.string().optional(),
+  handle: z.string().describe("Creator handle on X"),
+  height: z.number().int(),
+  iterations: z.string().optional(),
+  model: z.string().optional(),
+  pageUrl: z.string().describe("Canonical page on motionvideo.xyz"),
   poster: z.string().describe("Poster image URL"),
   preview: z.string().describe("Short looping preview MP4 URL"),
+  promptShared: z.boolean().describe("Whether the original prompt is public"),
+  slug: z.string().describe("Stable catalog id, e.g. stephanlivera-df17a2"),
+  tags: z.array(z.string()).describe("Entry tags: prompt, skill, ..."),
+  title: z.string(),
   video: z.string().describe("Full video MP4 URL"),
   width: z.number().int(),
-  height: z.number().int(),
-  promptShared: z.boolean().describe("Whether the original prompt is public"),
-  model: z.string().optional(),
-  effort: z.string().optional(),
-  iterations: z.string().optional(),
-  pageUrl: z.string().describe("Canonical page on motionvideo.xyz"),
 });
 
 const videoDetailSchema = videoSummarySchema.extend({
+  category: z.string().optional().describe("Primary content category"),
+  categoryUrl: z.string().optional(),
+  neighbours: z
+    .object({
+      next: z.string().optional(),
+      previous: z.string().optional(),
+    })
+    .describe("Slugs before and after this entry in its category"),
   prompt: z
     .string()
     .optional()
     .describe("Original prompt behind the video, as shared by the creator"),
   skillUrl: z.string().optional(),
-  tweetUrl: z.string().optional(),
   stack: z.string().optional(),
-  category: z.string().optional().describe("Primary content category"),
-  categoryUrl: z.string().optional(),
-  neighbours: z
-    .object({
-      previous: z.string().optional(),
-      next: z.string().optional(),
-    })
-    .describe("Slugs before and after this entry in its category"),
+  tweetUrl: z.string().optional(),
 });
 
 const searchInputSchema = z.object({
-  query: z
-    .string()
-    .optional()
-    .describe(
-      "Keywords; every word must appear in the title, prompt, creator handle, or content tags"
-    ),
   category: z
     .enum(MOTION_CATEGORIES)
     .optional()
     .describe("Filter to one content category (see list-categories)"),
-  type: z
-    .enum(["prompt", "skill"])
-    .optional()
-    .describe("Only entries that shared a prompt, or that shipped a skill"),
-  sort: z
-    .enum(["newest", "oldest"])
-    .optional()
-    .describe("Sort order by publish date. Defaults to newest"),
   limit: z
     .number()
     .int()
@@ -175,21 +162,29 @@ const searchInputSchema = z.object({
     .max(SEARCH_MAX_LIMIT)
     .optional()
     .describe(`Max results to return (1-${SEARCH_MAX_LIMIT}). Defaults to 12`),
-});
-
-const getVideoInputSchema = z.object({
-  slug: z.string().describe("Catalog slug from search-videos, e.g. twoclipping-5cba86"),
-});
-
-const browseDirectoryInputSchema = z.object({
-  section: z
-    .enum(DIRECTORY_SECTIONS)
-    .optional()
-    .describe("Directory to browse. Defaults to tools"),
   query: z
     .string()
     .optional()
-    .describe("Keywords matched against name, description, and category"),
+    .describe(
+      "Keywords; every word must appear in the title, prompt, creator handle, or content tags"
+    ),
+  sort: z
+    .enum(["newest", "oldest"])
+    .optional()
+    .describe("Sort order by publish date. Defaults to newest"),
+  type: z
+    .enum(["prompt", "skill"])
+    .optional()
+    .describe("Only entries that shared a prompt, or that shipped a skill"),
+});
+
+const getVideoInputSchema = z.object({
+  slug: z
+    .string()
+    .describe("Catalog slug from search-videos, e.g. twoclipping-5cba86"),
+});
+
+const browseDirectoryInputSchema = z.object({
   category: z
     .string()
     .optional()
@@ -200,13 +195,23 @@ const browseDirectoryInputSchema = z.object({
     .min(1)
     .max(DIRECTORY_MAX_LIMIT)
     .optional()
-    .describe(`Max entries to return (1-${DIRECTORY_MAX_LIMIT}). Defaults to 24`),
+    .describe(
+      `Max entries to return (1-${DIRECTORY_MAX_LIMIT}). Defaults to 24`
+    ),
+  query: z
+    .string()
+    .optional()
+    .describe("Keywords matched against name, description, and category"),
+  section: z
+    .enum(DIRECTORY_SECTIONS)
+    .optional()
+    .describe("Directory to browse. Defaults to tools"),
 });
 
 const readOnly = {
-  readOnlyHint: true,
   destructiveHint: false,
   openWorldHint: false,
+  readOnlyHint: true,
 } as const;
 
 const viewCsp = {
@@ -219,32 +224,32 @@ const viewCsp = {
 
 export const searchVideos = server.tool(
   {
-    name: "search-videos",
-    title: "Search motion videos",
+    annotations: readOnly,
     description:
       "Search the motionvideo.xyz catalog of AI-made motion videos. Match by keywords and/or content category, sorted newest or oldest. Results include preview and full MP4 links plus the page URL.",
     inputSchema: searchInputSchema,
+    name: "search-videos",
     outputSchema: z.object({
-      total: z.number().int().describe("Total matches before the limit"),
       shown: z.number().int(),
+      total: z.number().int().describe("Total matches before the limit"),
       videos: z.array(videoSummarySchema),
     }),
+    title: "Search motion videos",
     view: {
-      name: "video-gallery",
+      csp: viewCsp,
       description:
         "Interactive gallery of matching motion videos with inline player and the prompt behind each entry",
+      name: "video-gallery",
       prefersBorder: false,
-      csp: viewCsp,
     },
-    annotations: readOnly,
   },
   async ({ query, category, type, sort, limit }) => {
     const { total, videos } = await searchCatalog({
-      query,
       category,
-      type,
-      sort,
       limit,
+      query,
+      sort,
+      type,
     });
 
     const filters = [
@@ -269,44 +274,44 @@ export const searchVideos = server.tool(
     return {
       content: [
         {
-          type: "text" as const,
           text: [header, "", ...lines, "", hint].join("\n"),
+          type: "text" as const,
         },
       ],
-      structuredContent: { total, shown: videos.length, videos },
+      structuredContent: { shown: videos.length, total, videos },
     };
   }
 );
 
 export const getVideo = server.tool(
   {
-    name: "get-video",
-    title: "Get a motion video",
+    annotations: readOnly,
     description:
       "Fetch one motionvideo.xyz catalog entry: the original prompt behind the video, how it was made (model, effort, iterations), live media links, and neighbours to keep exploring.",
     inputSchema: getVideoInputSchema,
+    name: "get-video",
     outputSchema: videoDetailSchema,
+    title: "Get a motion video",
     view: {
-      name: "video-detail",
+      csp: viewCsp,
       description:
         "Player for one motion video with its original prompt, metadata, and remix actions",
+      name: "video-detail",
       prefersBorder: false,
-      csp: viewCsp,
     },
-    annotations: readOnly,
   },
   async ({ slug }) => {
     const video = await findVideo(slug);
     if (!video) {
-      const { videos } = await searchCatalog({ query: slug, limit: 5 });
+      const { videos } = await searchCatalog({ limit: 5, query: slug });
       const suggestions = videos
         .map((entry) => `- ${entry.title} (${entry.slug}) — ${entry.pageUrl}`)
         .join("\n");
       return {
         content: [
           {
-            type: "text" as const,
             text: `No catalog video with slug "${slug}". Use search-videos to find one.${suggestions ? `\nClosest titles:\n${suggestions}` : ""}`,
+            type: "text" as const,
           },
         ],
         isError: true,
@@ -326,7 +331,6 @@ export const getVideo = server.tool(
     return {
       content: [
         {
-          type: "text" as const,
           text: [
             `${detail.title} by @${detail.handle} — ${detail.pageUrl}`,
             madeWith ? `Made with ${madeWith}.` : undefined,
@@ -336,6 +340,7 @@ export const getVideo = server.tool(
           ]
             .filter(Boolean)
             .join("\n"),
+          type: "text" as const,
         },
       ],
       structuredContent: detail,
@@ -345,23 +350,23 @@ export const getVideo = server.tool(
 
 export const listCategories = server.tool(
   {
-    name: "list-categories",
-    title: "List catalog categories",
+    annotations: readOnly,
     description:
       "List the motionvideo.xyz content categories with video counts and descriptions. Useful before search-videos to pick a category filter.",
     inputSchema: z.object({}),
+    name: "list-categories",
     outputSchema: z.object({
       categories: z.array(
         z.object({
+          count: z.number().int(),
+          description: z.string(),
           id: z.string(),
           label: z.string(),
-          description: z.string(),
-          count: z.number().int(),
           url: z.string(),
         })
       ),
     }),
-    annotations: readOnly,
+    title: "List catalog categories",
   },
   async () => {
     const categories = await categorySummaries();
@@ -372,8 +377,8 @@ export const listCategories = server.tool(
     return {
       content: [
         {
-          type: "text" as const,
           text: ["Catalog categories:", "", ...lines].join("\n"),
+          type: "text" as const,
         },
       ],
       structuredContent: { categories },
@@ -383,36 +388,38 @@ export const listCategories = server.tool(
 
 export const browseDirectory = server.tool(
   {
-    name: "browse-directory",
-    title: "Browse tools and studios",
+    annotations: readOnly,
     description:
       "Browse the motionvideo.xyz directories: motion tools, editors, AI generators, and resource sites (tools), or motion studios for hire (studios).",
     inputSchema: browseDirectoryInputSchema,
+    name: "browse-directory",
     outputSchema: z.object({
-      section: z.string(),
-      total: z.number().int(),
-      shown: z.number().int(),
-      categories: z.array(z.string()).describe("Categories available in this section"),
+      categories: z
+        .array(z.string())
+        .describe("Categories available in this section"),
       entries: z.array(
         z.object({
+          category: z.string(),
+          cover: z.string(),
+          description: z.string(),
           id: z.string(),
           name: z.string(),
-          description: z.string(),
-          category: z.string(),
           url: z.string(),
-          cover: z.string(),
         })
       ),
+      section: z.string(),
+      shown: z.number().int(),
+      total: z.number().int(),
     }),
-    annotations: readOnly,
+    title: "Browse tools and studios",
   },
   async ({ section, query, category, limit }) => {
     const activeSection = section ?? "tools";
     const { total, entries } = await browseDirectoryPage({
-      section: activeSection,
-      query,
       category,
       limit,
+      query,
+      section: activeSection,
     });
     const label = activeSection === "tools" ? "tools & apps" : "motion studios";
     const lines = entries.map(
@@ -422,20 +429,20 @@ export const browseDirectory = server.tool(
     return {
       content: [
         {
-          type: "text" as const,
           text: [
             `${total} ${label}${query ? ` matching "${query}"` : ""}${category ? ` in ${category}` : ""}. Showing ${entries.length}.`,
             "",
             ...lines,
           ].join("\n"),
+          type: "text" as const,
         },
       ],
       structuredContent: {
-        section: activeSection,
-        total,
-        shown: entries.length,
         categories: await directoryCategories(activeSection),
         entries,
+        section: activeSection,
+        shown: entries.length,
+        total,
       },
     };
   }
@@ -446,38 +453,38 @@ export const browseDirectory = server.tool(
 // ---------------------------------------------------------------------------
 
 // Read-only overview of the catalog for clients that prefer resources.
-const catalogOverview = server.resource(
+server.resource(
   {
-    name: "catalog-overview",
-    uri: "motionvideo://catalog/overview",
-    title: "MotionVideo catalog overview",
     description:
       "Counts, categories, and directory sections of the motionvideo.xyz catalog.",
     mimeType: "application/json",
+    name: "catalog-overview",
+    title: "MotionVideo catalog overview",
+    uri: "motionvideo://catalog/overview",
   },
   async (uri) => ({
     contents: [
       {
-        uri: uri.href,
         mimeType: "application/json",
         text: JSON.stringify(await catalogStats(), null, 2),
+        uri: uri.href,
       },
     ],
   })
 );
 
 // One catalog entry per video, prompt included.
-const videoResource = server.resourceTemplate(
+server.resourceTemplate(
   {
-    name: "video",
-    uriTemplate: "motionvideo://videos/{slug}",
-    title: "Catalog video entry",
-    description:
-      "Full catalog entry for one motion video: original prompt, metadata, media links, and neighbours.",
-    mimeType: "application/json",
     complete: {
       slug: completeVideoSlug,
     },
+    description:
+      "Full catalog entry for one motion video: original prompt, metadata, media links, and neighbours.",
+    mimeType: "application/json",
+    name: "video",
+    title: "Catalog video entry",
+    uriTemplate: "motionvideo://videos/{slug}",
   },
   async (uri, params) => {
     const slug = Array.isArray(params.slug) ? params.slug[0] : params.slug;
@@ -486,9 +493,9 @@ const videoResource = server.resourceTemplate(
       return {
         contents: [
           {
-            uri: uri.href,
             mimeType: "text/plain",
             text: `No catalog video with slug "${slug ?? ""}". Use the search-videos tool to find one.`,
+            uri: uri.href,
           },
         ],
       };
@@ -496,9 +503,9 @@ const videoResource = server.resourceTemplate(
     return {
       contents: [
         {
-          uri: uri.href,
           mimeType: "application/json",
           text: JSON.stringify(await toDetail(video), null, 2),
+          uri: uri.href,
         },
       ],
     };
@@ -509,26 +516,25 @@ const videoResource = server.resourceTemplate(
 // Prompts
 // ---------------------------------------------------------------------------
 
-const remixVideo = server.prompt(
+// Model-ready brief built from a catalog entry's original prompt.
+server.prompt(
   {
-    name: "remix-video",
-    title: "Remix a catalog motion video",
     description:
       "Model-ready brief to recreate or adapt the motion video behind a catalog entry using its original prompt, model, and metadata.",
+    name: "remix-video",
     schema: z.object({
-      slug: completable(
-        z
-          .string()
-          .describe('Catalog video slug, e.g. "stephanlivera-df17a2"'),
-        completeVideoSlug
-      ),
       direction: z
         .string()
         .optional()
         .describe(
           "Optional new direction: brand, subject, palette, duration, or platform changes"
         ),
+      slug: completable(
+        z.string().describe('Catalog video slug, e.g. "stephanlivera-df17a2"'),
+        completeVideoSlug
+      ),
     }),
+    title: "Remix a catalog motion video",
   },
   async ({ slug, direction }) => {
     const video = await findVideo(String(slug));
@@ -536,11 +542,11 @@ const remixVideo = server.prompt(
       return {
         messages: [
           {
-            role: "user" as const,
             content: {
-              type: "text" as const,
               text: `No catalog video with slug "${slug}". Use the search-videos tool to find one first.`,
+              type: "text" as const,
             },
+            role: "user" as const,
           },
         ],
       };
@@ -574,8 +580,8 @@ const remixVideo = server.prompt(
     return {
       messages: [
         {
+          content: { text: brief, type: "text" as const },
           role: "user" as const,
-          content: { type: "text" as const, text: brief },
         },
       ],
     };

@@ -47,8 +47,8 @@ const formatDate = (isoDate: string): string => {
     return isoDate;
   }
   return parsed.toLocaleDateString("en-US", {
-    month: "short",
     day: "numeric",
+    month: "short",
     year: "numeric",
   });
 };
@@ -62,28 +62,27 @@ const copyText = async (text: string): Promise<boolean> => {
   }
 };
 
-function Chip({
+const Chip = ({
   children,
   tone = "neutral",
 }: {
   children: React.ReactNode;
   tone?: "neutral" | "yellow";
-}) {
-  return (
-    <span
-      className={
-        tone === "yellow"
-          ? "inline-flex items-center rounded-full bg-[#FFBE25]/20 px-2 py-0.5 text-[11px] font-medium text-[#8a6200] dark:text-[#ffd875]"
-          : "inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
-      }
-    >
-      {children}
-    </span>
-  );
-}
+}) => (
+  <span
+    className={
+      tone === "yellow"
+        ? "inline-flex items-center rounded-full bg-[#FFBE25]/20 px-2 py-0.5 text-[11px] font-medium text-[#8a6200] dark:text-[#ffd875]"
+        : "inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+    }
+  >
+    {children}
+  </span>
+);
 
-function MetaChips({ video }: { video: Video }) {
-  const size = video.width && video.height ? `${video.width}×${video.height}` : null;
+const MetaChips = ({ video }: { video: Video }) => {
+  const size =
+    video.width && video.height ? `${video.width}×${video.height}` : null;
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {video.promptShared && <Chip tone="yellow">Prompt</Chip>}
@@ -97,10 +96,19 @@ function MetaChips({ video }: { video: Video }) {
       ))}
     </div>
   );
-}
+};
 
-function PromptBlock({ prompt }: { prompt: string }) {
+const PromptBlock = ({ prompt }: { prompt: string }) => {
   const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    const ok = await copyText(prompt);
+    if (ok) {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    }
+  };
+
   return (
     <div className="rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/60">
       <div className="flex items-center justify-between border-b border-zinc-200 px-3 py-2 dark:border-zinc-800">
@@ -110,14 +118,7 @@ function PromptBlock({ prompt }: { prompt: string }) {
         <button
           type="button"
           className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-zinc-300 px-2.5 py-1 text-xs text-zinc-600 transition-colors hover:bg-white dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-          onClick={() => {
-            void copyText(prompt).then((ok) => {
-              if (ok) {
-                setCopied(true);
-                window.setTimeout(() => setCopied(false), 1500);
-              }
-            });
-          }}
+          onClick={handleCopy}
         >
           {copied ? "Copied" : "Copy"}
         </button>
@@ -127,46 +128,44 @@ function PromptBlock({ prompt }: { prompt: string }) {
       </pre>
     </div>
   );
-}
+};
 
-function VideoPlayer({
+const VideoPlayer = ({
   detail,
   className,
 }: {
   detail: VideoDetail;
   className?: string;
-}) {
-  return (
-    <div
-      className={`overflow-hidden rounded-xl bg-black ${className ?? ""}`}
-      style={
-        detail.width && detail.height
-          ? { aspectRatio: `${detail.width} / ${detail.height}` }
-          : undefined
-      }
-    >
-      <video
-        key={detail.slug}
-        src={detail.video}
-        poster={detail.poster}
-        autoPlay
-        muted
-        loop
-        playsInline
-        controls
-        className="h-full w-full object-contain"
-      />
-    </div>
-  );
-}
+}) => (
+  <div
+    className={`overflow-hidden rounded-xl bg-black ${className ?? ""}`}
+    style={
+      detail.width && detail.height
+        ? { aspectRatio: `${detail.width} / ${detail.height}` }
+        : undefined
+    }
+  >
+    <video
+      key={detail.slug}
+      src={detail.video}
+      poster={detail.poster}
+      autoPlay
+      muted
+      loop
+      playsInline
+      controls
+      className="h-full w-full object-contain"
+    />
+  </div>
+);
 
-function GalleryCard({
+const GalleryCard = ({
   video,
   onOpen,
 }: {
   video: Video;
   onOpen: () => void;
-}) {
+}) => {
   const [hovered, setHovered] = useState(false);
   return (
     <button
@@ -216,26 +215,24 @@ function GalleryCard({
       </span>
     </button>
   );
-}
+};
 
-function SkeletonGrid() {
-  return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      {[0, 1, 2, 3].map((index) => (
-        <div
-          key={index}
-          className="flex animate-pulse flex-col gap-2 rounded-2xl border border-zinc-200 p-2 dark:border-zinc-800"
-        >
-          <div className="aspect-video w-full rounded-xl bg-zinc-200 dark:bg-zinc-800" />
-          <div className="mx-1 h-4 w-2/3 rounded bg-zinc-200 dark:bg-zinc-800" />
-          <div className="mx-1 mb-1 h-3 w-1/3 rounded bg-zinc-200 dark:bg-zinc-800" />
-        </div>
-      ))}
-    </div>
-  );
-}
+const SkeletonGrid = () => (
+  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    {[0, 1, 2, 3].map((index) => (
+      <div
+        key={index}
+        className="flex animate-pulse flex-col gap-2 rounded-2xl border border-zinc-200 p-2 dark:border-zinc-800"
+      >
+        <div className="aspect-video w-full rounded-xl bg-zinc-200 dark:bg-zinc-800" />
+        <div className="mx-1 h-4 w-2/3 rounded bg-zinc-200 dark:bg-zinc-800" />
+        <div className="mx-1 mb-1 h-3 w-1/3 rounded bg-zinc-200 dark:bg-zinc-800" />
+      </div>
+    ))}
+  </div>
+);
 
-export default function VideoGallery() {
+const VideoGallery = () => {
   const view = useToolContext<"search-videos">();
   const [openSlug, setOpenSlug] = useState<string | null>(null);
   const detail = useCallTool("get-video");
@@ -261,19 +258,26 @@ export default function VideoGallery() {
     }
   };
 
-  const remixInChat = (current: VideoDetail) => {
+  const remixInChat = async (current: VideoDetail) => {
     if (!canFollowUp) {
       return;
     }
-    void sendFollowUp({
-      prompt: `Let's remake "${current.title}" (${current.pageUrl}) for my project. Adapt the original prompt to my brief — ask me what to change first — then build it.`,
-    }).catch(() => {});
+    try {
+      await sendFollowUp({
+        prompt: `Let's remake "${current.title}" (${current.pageUrl}) for my project. Adapt the original prompt to my brief — ask me what to change first — then build it.`,
+      });
+    } catch {
+      // The host refused the follow-up; the gallery stays usable either way.
+    }
   };
 
   const activeDetail: VideoDetail | undefined =
-    detail.data?.structuredContent && detail.data.structuredContent.slug === openSlug
-      ? (detail.data.structuredContent as VideoDetail)
+    detail.data?.structuredContent &&
+    detail.data.structuredContent.slug === openSlug
+      ? detail.data.structuredContent
       : undefined;
+  const previous = activeDetail?.neighbours.previous;
+  const next = activeDetail?.neighbours.next;
 
   const content = (() => {
     if (view.status === "error") {
@@ -285,7 +289,11 @@ export default function VideoGallery() {
     }
 
     if (view.status === "pending") {
-      return <div className="p-3"><SkeletonGrid /></div>;
+      return (
+        <div className="p-3">
+          <SkeletonGrid />
+        </div>
+      );
     }
 
     const { total, shown, videos } = view.toolOutput;
@@ -346,33 +354,36 @@ export default function VideoGallery() {
               </div>
               <MetaChips video={activeDetail} />
               {activeDetail.prompt ? (
-                <PromptBlock key={activeDetail.slug} prompt={activeDetail.prompt} />
+                <PromptBlock
+                  key={activeDetail.slug}
+                  prompt={activeDetail.prompt}
+                />
               ) : (
                 <p className="m-0 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-400">
                   No prompt was shared for this one — it works as a visual
                   reference.
                 </p>
               )}
-              {(activeDetail.neighbours.previous || activeDetail.neighbours.next) && (
+              {(previous || next) && (
                 <div className="flex items-center justify-between gap-2 pt-1">
-                  {activeDetail.neighbours.previous ? (
+                  {previous ? (
                     <button
                       type="button"
                       className="cursor-pointer rounded-full border border-zinc-300 px-3 py-1 text-xs text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                      onClick={() => openVideo(activeDetail.neighbours.previous as string)}
+                      onClick={() => openVideo(previous)}
                     >
-                      ← {activeDetail.neighbours.previous}
+                      ← {previous}
                     </button>
                   ) : (
                     <span />
                   )}
-                  {activeDetail.neighbours.next && (
+                  {next && (
                     <button
                       type="button"
                       className="cursor-pointer rounded-full border border-zinc-300 px-3 py-1 text-xs text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                      onClick={() => openVideo(activeDetail.neighbours.next as string)}
+                      onClick={() => openVideo(next)}
                     >
-                      {activeDetail.neighbours.next} →
+                      {next} →
                     </button>
                   )}
                 </div>
@@ -461,4 +472,6 @@ export default function VideoGallery() {
       </div>
     </ThemeProvider>
   );
-}
+};
+
+export default VideoGallery;

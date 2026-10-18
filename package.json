@@ -1,29 +1,31 @@
 {
   "name": "motionvideo-mcp",
-  "type": "module",
-  "engines": {
-    "node": ">=22.22.2"
-  },
   "version": "1.0.0",
   "description": "MotionVideo MCP app: search the motionvideo.xyz catalog of AI-made motion videos, pull the original prompts behind them, and browse motion tools and studios.",
-  "author": "MotionVideo",
-  "license": "MIT",
-  "homepage": "https://motionvideo.xyz",
   "keywords": [
-    "mcp",
-    "mcp-server",
-    "mcp-app",
-    "mcp-use",
     "manufact",
-    "motionvideo",
-    "motion design"
+    "mcp",
+    "mcp-app",
+    "mcp-server",
+    "mcp-use",
+    "motion design",
+    "motionvideo"
   ],
+  "homepage": "https://motionvideo.xyz",
+  "license": "MIT",
+  "author": "MotionVideo",
+  "type": "module",
   "scripts": {
     "build": "mcp-use build",
     "dev": "mcp-use dev",
     "start": "mcp-use start",
     "deploy": "mcp-use deploy",
-    "typecheck": "mcp-use typecheck"
+    "typecheck": "mcp-use typecheck",
+    "lint": "oxlint",
+    "format": "oxfmt",
+    "check": "ultracite check",
+    "fix": "ultracite fix",
+    "prepare": "lefthook install"
   },
   "dependencies": {
     "mcp-use": "2.10.1",
@@ -36,6 +38,13 @@
     "@types/node": "^22.20.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "typescript": "^7.0.2"
+    "lefthook": "^2.2.2",
+    "oxfmt": "^0.70.0",
+    "oxlint": "^1.88.0",
+    "typescript": "^7.0.2",
+    "ultracite": "7.12.1"
+  },
+  "engines": {
+    "node": ">=22.22.2"
   }
 }
