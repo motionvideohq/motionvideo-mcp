@@ -1,0 +1,42 @@
+{
+  "name": "motionvideo-mcp",
+  "type": "module",
+  "engines": {
+    "node": ">=22.22.2"
+  },
+  "version": "1.0.0",
+  "description": "MotionVideo MCP app: search the motionvideo.xyz catalog of AI-made motion videos, pull the original prompts behind them, and browse motion tools and studios.",
+  "author": "MotionVideo",
+  "license": "MIT",
+  "homepage": "https://motionvideo.xyz",
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "mcp-app",
+    "mcp-use",
+    "manufact",
+    "motionvideo",
+    "motion design"
+  ],
+  "scripts": {
+    "build": "mcp-use build",
+    "dev": "mcp-use dev",
+    "start": "mcp-use start",
+    "deploy": "mcp-use deploy",
+    "typecheck": "mcp-use typecheck",
+    "catalog:sync": "node scripts/sync-catalog.mjs"
+  },
+  "dependencies": {
+    "mcp-use": "2.10.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@mcp-use/client": "^2.4.4",
+    "@types/node": "^22.20.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^7.0.2"
+  }
+}
