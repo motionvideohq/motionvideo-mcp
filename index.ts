@@ -6,12 +6,14 @@ import { z } from "zod";
 
 import {
   browseDirectory as browseDirectoryPage,
+  CatalogUnavailableError,
   catalogStats,
   DIRECTORY_MAX_LIMIT,
   DIRECTORY_SECTIONS,
   directoryCategories,
   findVideo,
   listCategories as categorySummaries,
+  loadVideos,
   MOTION_CATEGORIES,
   SEARCH_MAX_LIMIT,
   searchVideos as searchCatalog,
@@ -36,6 +38,73 @@ const server = new MCPServer({
     },
   ],
 });
+
+// ---------------------------------------------------------------------------
+// Catalog access
+// ---------------------------------------------------------------------------
+
+// The catalog is fetched live from motionvideo.xyz, so an unreachable site is
+// an operational state, not a programming error: report it the way a missing
+// slug is reported instead of failing the whole JSON-RPC call.
+server.use("mcp:tools/call", async (_ctx, next) => {
+  try {
+    return await next();
+  } catch (error) {
+    if (!(error instanceof CatalogUnavailableError)) {
+      throw error;
+    }
+    return {
+      content: [{ type: "text" as const, text: error.message }],
+      isError: true,
+    };
+  }
+});
+
+server.use("mcp:resources/read", async (ctx, next) => {
+  try {
+    return await next();
+  } catch (error) {
+    if (!(error instanceof CatalogUnavailableError)) {
+      throw error;
+    }
+    return {
+      contents: [
+        { uri: ctx.params.uri, mimeType: "text/plain", text: error.message },
+      ],
+    };
+  }
+});
+
+server.use("mcp:prompts/get", async (_ctx, next) => {
+  try {
+    return await next();
+  } catch (error) {
+    if (!(error instanceof CatalogUnavailableError)) {
+      throw error;
+    }
+    return {
+      messages: [
+        {
+          role: "user" as const,
+          content: { type: "text" as const, text: error.message },
+        },
+      ],
+    };
+  }
+});
+
+// Slug suggestions for resource reads and the remix prompt, from the (cached)
+// live catalog; empty when the site can't be reached.
+const completeVideoSlug = async (value: string): Promise<string[]> => {
+  try {
+    const prefix = value.trim().toLowerCase();
+    return (await loadVideos())
+      .map((video) => video.slug)
+      .filter((slug) => slug.toLowerCase().startsWith(prefix));
+  } catch {
+    return [];
+  }
+};
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -170,7 +239,7 @@ export const searchVideos = server.tool(
     annotations: readOnly,
   },
   async ({ query, category, type, sort, limit }) => {
-    const { total, videos } = searchCatalog({
+    const { total, videos } = await searchCatalog({
       query,
       category,
       type,
@@ -227,9 +296,9 @@ export const getVideo = server.tool(
     annotations: readOnly,
   },
   async ({ slug }) => {
-    const video = findVideo(slug);
+    const video = await findVideo(slug);
     if (!video) {
-      const { videos } = searchCatalog({ query: slug, limit: 5 });
+      const { videos } = await searchCatalog({ query: slug, limit: 5 });
       const suggestions = videos
         .map((entry) => `- ${entry.title} (${entry.slug}) — ${entry.pageUrl}`)
         .join("\n");
@@ -244,7 +313,7 @@ export const getVideo = server.tool(
       };
     }
 
-    const detail = toDetail(video);
+    const detail = await toDetail(video);
     const madeWith = [
       detail.model && `model ${detail.model}`,
       detail.effort && `effort ${detail.effort}`,
@@ -295,7 +364,7 @@ export const listCategories = server.tool(
     annotations: readOnly,
   },
   async () => {
-    const categories = categorySummaries();
+    const categories = await categorySummaries();
     const lines = categories.map(
       (category) =>
         `- ${category.id} — ${category.label} (${category.count} videos): ${category.description}`
@@ -339,7 +408,7 @@ export const browseDirectory = server.tool(
   },
   async ({ section, query, category, limit }) => {
     const activeSection = section ?? "tools";
-    const { total, entries } = browseDirectoryPage({
+    const { total, entries } = await browseDirectoryPage({
       section: activeSection,
       query,
       category,
@@ -365,7 +434,7 @@ export const browseDirectory = server.tool(
         section: activeSection,
         total,
         shown: entries.length,
-        categories: directoryCategories(activeSection),
+        categories: await directoryCategories(activeSection),
         entries,
       },
     };
@@ -391,7 +460,7 @@ const catalogOverview = server.resource(
       {
         uri: uri.href,
         mimeType: "application/json",
-        text: JSON.stringify(catalogStats(), null, 2),
+        text: JSON.stringify(await catalogStats(), null, 2),
       },
     ],
   })
@@ -407,14 +476,12 @@ const videoResource = server.resourceTemplate(
       "Full catalog entry for one motion video: original prompt, metadata, media links, and neighbours.",
     mimeType: "application/json",
     complete: {
-      slug: searchCatalog({ limit: SEARCH_MAX_LIMIT }).videos.map(
-        (video) => video.slug
-      ),
+      slug: completeVideoSlug,
     },
   },
   async (uri, params) => {
     const slug = Array.isArray(params.slug) ? params.slug[0] : params.slug;
-    const video = slug ? findVideo(slug) : undefined;
+    const video = slug ? await findVideo(slug) : undefined;
     if (!video) {
       return {
         contents: [
@@ -431,7 +498,7 @@ const videoResource = server.resourceTemplate(
         {
           uri: uri.href,
           mimeType: "application/json",
-          text: JSON.stringify(toDetail(video), null, 2),
+          text: JSON.stringify(await toDetail(video), null, 2),
         },
       ],
     };
@@ -453,9 +520,7 @@ const remixVideo = server.prompt(
         z
           .string()
           .describe('Catalog video slug, e.g. "stephanlivera-df17a2"'),
-        searchCatalog({ limit: SEARCH_MAX_LIMIT }).videos.map(
-          (video) => video.slug
-        )
+        completeVideoSlug
       ),
       direction: z
         .string()
@@ -466,7 +531,7 @@ const remixVideo = server.prompt(
     }),
   },
   async ({ slug, direction }) => {
-    const video = findVideo(String(slug));
+    const video = await findVideo(String(slug));
     if (!video) {
       return {
         messages: [
@@ -481,7 +546,7 @@ const remixVideo = server.prompt(
       };
     }
 
-    const detail = toDetail(video);
+    const detail = await toDetail(video);
     const madeWith = [
       detail.model && `model ${detail.model}`,
       detail.effort && `effort ${detail.effort}`,

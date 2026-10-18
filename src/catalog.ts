@@ -1,14 +1,127 @@
 // Data layer over the motionvideo.xyz catalog.
 //
-// The JSON files under data/ are synced from the site repo with
-// `pnpm catalog:sync` (scripts/sync-catalog.mjs). Keep the field names in sync
-// with motionvideo.xyz/src/lib/motion-catalog.ts.
+// motionvideo.xyz is the single source of truth: this module fetches
+// `/api/catalog` (videos) and `/api/catalog/directories` (tools & studios)
+// from the site at request time. Documents are cached per process, and a
+// brief site outage keeps serving the last good copy. Keep the field names
+// in sync with motionvideo.xyz/src/lib/motion-catalog.ts and
+// motionvideo.xyz/src/routes/api/catalog/*.
 
-import catalog from "../data/motion-catalog.json" with { type: "json" };
-import directories from "../data/resource-directories.json" with { type: "json" };
+/** Public site. Point at a local dev server with MOTIONVIDEO_SITE_URL. */
+export const SITE_URL = (
+  process.env.MOTIONVIDEO_SITE_URL ?? "https://motionvideo.xyz"
+).replace(/\/+$/u, "");
 
-/** Public site (video pages, category pages). */
-export const SITE_URL = "https://motionvideo.xyz";
+const CATALOG_PATH = "/api/catalog";
+const DIRECTORIES_PATH = "/api/catalog/directories";
+
+/** A fetched document is served this long before it is refetched. */
+const CACHE_TTL_MS = 10 * 60 * 1000;
+/** After a failed refetch, serve the stale copy and retry this soon. */
+const RETRY_MS = 60 * 1000;
+/** Abandon a single fetch after this long. */
+const FETCH_TIMEOUT_MS = 10 * 1000;
+
+/** The site could not be reached and no copy has been fetched yet. */
+export class CatalogUnavailableError extends Error {
+  constructor(path: string, cause: unknown) {
+    const reason = cause instanceof Error ? cause.message : String(cause);
+    super(
+      `The motionvideo.xyz catalog is temporarily unavailable (${SITE_URL}${path}: ${reason}). Retry in a moment.`
+    );
+    this.name = "CatalogUnavailableError";
+  }
+}
+
+interface CacheEntry<T> {
+  data: T;
+  etag?: string;
+  /** Epoch ms until which `data` is served without refetching. */
+  serveUntil: number;
+}
+
+const cache = new Map<string, CacheEntry<unknown>>();
+const inflight = new Map<string, Promise<unknown>>();
+
+/** Fetch and cache one JSON document, with ETag revalidation. */
+const loadDocument = <T>(key: string, path: string): Promise<T> => {
+  const entry = cache.get(key) as CacheEntry<T> | undefined;
+  if (entry && Date.now() < entry.serveUntil) {
+    return Promise.resolve(entry.data);
+  }
+  const running = inflight.get(key) as Promise<T> | undefined;
+  if (running) {
+    return running;
+  }
+
+  const pending = (async (): Promise<T> => {
+    const headers: Record<string, string> = {
+      accept: "application/json",
+      "user-agent": "motionvideo-mcp",
+    };
+    if (entry?.etag) {
+      headers["if-none-match"] = entry.etag;
+    }
+    try {
+      const response = await fetch(`${SITE_URL}${path}`, {
+        headers,
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
+      if (response.status === 304 && entry) {
+        entry.serveUntil = Date.now() + CACHE_TTL_MS;
+        return entry.data;
+      }
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const data = (await response.json()) as T;
+      cache.set(key, {
+        data,
+        etag: response.headers.get("etag") ?? undefined,
+        serveUntil: Date.now() + CACHE_TTL_MS,
+      });
+      return data;
+    } catch (error) {
+      if (entry) {
+        // The site is briefly unreachable: keep the last good copy flowing.
+        console.error(
+          `[motionvideo] ${path} refetch failed; serving cached copy:`,
+          error
+        );
+        entry.serveUntil = Date.now() + RETRY_MS;
+        return entry.data;
+      }
+      throw new CatalogUnavailableError(path, error);
+    } finally {
+      inflight.delete(key);
+    }
+  })();
+
+  inflight.set(key, pending);
+  return pending;
+};
+
+interface CatalogDocument {
+  importedAt?: string;
+  videos?: MotionVideo[];
+}
+
+interface DirectoriesDocument {
+  tools?: { entries?: DirectoryEntry[] };
+  studios?: { entries?: DirectoryEntry[] };
+}
+
+const loadCatalogDocument = (): Promise<CatalogDocument> =>
+  loadDocument("catalog", CATALOG_PATH);
+
+const loadDirectoriesDocument = (): Promise<DirectoriesDocument> =>
+  loadDocument("directories", DIRECTORIES_PATH);
+
+/** Every catalog entry, newest first as published on the site. */
+export const loadVideos = async (): Promise<MotionVideo[]> => {
+  const document = await loadCatalogDocument();
+  return (document.videos ?? []) as unknown as MotionVideo[];
+};
 
 /** Reasoning effort the model ran at, as the creator reported it. */
 export const EFFORTS = ["medium", "high", "max"] as const;
@@ -171,13 +284,6 @@ export interface DirectoryEntry {
 export const DIRECTORY_SECTIONS = ["tools", "studios"] as const;
 export type DirectorySection = (typeof DIRECTORY_SECTIONS)[number];
 
-const videos: MotionVideo[] = (catalog.videos ?? []) as unknown as MotionVideo[];
-
-/** When the bundled catalog was imported from the site. */
-export const catalogImportedAt: string | undefined = (
-  catalog as { importedAt?: string }
-).importedAt;
-
 const isMotionCategory = (value: string): value is MotionCategory =>
   (MOTION_CATEGORIES as readonly string[]).includes(value);
 
@@ -230,13 +336,14 @@ export const SEARCH_MAX_LIMIT = 30;
  * Mirrors the site's gallery filtering: every query word must appear in the
  * title, creator handle, prompt, or content tags.
  */
-export const searchVideos = ({
+export const searchVideos = async ({
   query,
   category,
   type,
   sort = "newest",
   limit = 12,
-}: SearchInput): { total: number; videos: VideoSummary[] } => {
+}: SearchInput): Promise<{ total: number; videos: VideoSummary[] }> => {
+  const videos = await loadVideos();
   const words =
     query
       ?.trim()
@@ -273,29 +380,31 @@ export const searchVideos = ({
   };
 };
 
-export const findVideo = (slug: string): MotionVideo | undefined =>
-  videos.find((video) => video.slug === slug);
+export const findVideo = async (
+  slug: string
+): Promise<MotionVideo | undefined> =>
+  (await loadVideos()).find((video) => video.slug === slug);
 
-export const videoNeighbours = (
+const videoNeighbours = (
+  videos: MotionVideo[],
   video: MotionVideo
 ): { previous?: string; next?: string } => {
   const category = primaryCategory(video);
   const pool = category
     ? videos.filter((entry) => (entry.contentTags ?? []).includes(category))
     : videos;
-  const ordered = [...pool].sort(
-    (a, b) => -1 * a.date.localeCompare(b.date)
-  );
+  const ordered = [...pool].sort((a, b) => -1 * a.date.localeCompare(b.date));
   const index = ordered.findIndex((entry) => entry.slug === video.slug);
   return {
     previous: index > 0 ? ordered[index - 1]?.slug : undefined,
-    next: index >= 0 && index < ordered.length - 1
-      ? ordered[index + 1]?.slug
-      : undefined,
+    next:
+      index >= 0 && index < ordered.length - 1
+        ? ordered[index + 1]?.slug
+        : undefined,
   };
 };
 
-export const toDetail = (video: MotionVideo): VideoDetail => {
+export const toDetail = async (video: MotionVideo): Promise<VideoDetail> => {
   const category = primaryCategory(video);
   return {
     ...toSummary(video),
@@ -305,26 +414,28 @@ export const toDetail = (video: MotionVideo): VideoDetail => {
     stack: video.stack,
     category,
     categoryUrl: category ? categoryPageUrl(category) : undefined,
-    neighbours: videoNeighbours(video),
+    neighbours: videoNeighbours(await loadVideos(), video),
   };
 };
 
-export const listCategories = (): CategorySummary[] =>
+const categorySummaries = (videos: MotionVideo[]): CategorySummary[] =>
   MOTION_CATEGORIES.map((id) => ({
     id,
     label: CATEGORY_META[id].label,
     description: CATEGORY_META[id].description,
-    count: videos.filter((video) =>
-      (video.contentTags ?? []).includes(id)
-    ).length,
+    count: videos.filter((video) => (video.contentTags ?? []).includes(id))
+      .length,
     url: categoryPageUrl(id),
   }));
 
-const directoryEntries = (section: DirectorySection): DirectoryEntry[] =>
-  (
-    (directories as Record<string, { entries?: DirectoryEntry[] }>)[section]
-      ?.entries ?? []
-  ).map((entry) => ({
+export const listCategories = async (): Promise<CategorySummary[]> =>
+  categorySummaries(await loadVideos());
+
+const directoryEntries = (
+  document: DirectoriesDocument,
+  section: DirectorySection
+): DirectoryEntry[] =>
+  (document[section]?.entries ?? []).map((entry) => ({
     id: entry.id,
     name: entry.name,
     description: entry.description ?? "",
@@ -333,10 +444,17 @@ const directoryEntries = (section: DirectorySection): DirectoryEntry[] =>
     cover: entry.cover ?? "",
   }));
 
-export const directoryCategories = (section: DirectorySection): string[] =>
-  [...new Set(directoryEntries(section).map((entry) => entry.category))]
+const entryCategories = (entries: DirectoryEntry[]): string[] =>
+  [...new Set(entries.map((entry) => entry.category))]
     .filter(Boolean)
     .sort((a, b) => a.localeCompare(b));
+
+export const directoryCategories = async (
+  section: DirectorySection
+): Promise<string[]> =>
+  entryCategories(
+    directoryEntries(await loadDirectoriesDocument(), section)
+  );
 
 export const DIRECTORY_MAX_LIMIT = 120;
 
@@ -347,12 +465,13 @@ export interface BrowseInput {
   limit?: number;
 }
 
-export const browseDirectory = ({
+export const browseDirectory = async ({
   section,
   query,
   category,
   limit = 24,
-}: BrowseInput): { total: number; entries: DirectoryEntry[] } => {
+}: BrowseInput): Promise<{ total: number; entries: DirectoryEntry[] }> => {
+  const entries = directoryEntries(await loadDirectoriesDocument(), section);
   const words =
     query
       ?.trim()
@@ -360,7 +479,7 @@ export const browseDirectory = ({
       .split(/\s+/u)
       .filter(Boolean) ?? [];
 
-  const filtered = directoryEntries(section).filter((entry) => {
+  const filtered = entries.filter((entry) => {
     if (
       category &&
       entry.category.toLowerCase() !== category.trim().toLowerCase()
@@ -380,16 +499,26 @@ export const browseDirectory = ({
 };
 
 /** Compact catalog stats for the overview resource. */
-export const catalogStats = () => ({
-  site: SITE_URL,
-  importedAt: catalogImportedAt,
-  totalVideos: videos.length,
-  videosWithPrompt: videos.filter((video) => video.promptShared).length,
-  categories: listCategories(),
-  directories: DIRECTORY_SECTIONS.map((section) => ({
-    section,
-    label: section === "tools" ? "Tools & apps" : "Motion studios",
-    total: directoryEntries(section).length,
-    categories: directoryCategories(section),
-  })),
-});
+export const catalogStats = async () => {
+  const [catalog, directories] = await Promise.all([
+    loadCatalogDocument(),
+    loadDirectoriesDocument(),
+  ]);
+  const videos = (catalog.videos ?? []) as unknown as MotionVideo[];
+  return {
+    site: SITE_URL,
+    importedAt: catalog.importedAt,
+    totalVideos: videos.length,
+    videosWithPrompt: videos.filter((video) => video.promptShared).length,
+    categories: categorySummaries(videos),
+    directories: DIRECTORY_SECTIONS.map((section) => {
+      const entries = directoryEntries(directories, section);
+      return {
+        section,
+        label: section === "tools" ? "Tools & apps" : "Motion studios",
+        total: entries.length,
+        categories: entryCategories(entries),
+      };
+    }),
+  };
+};
