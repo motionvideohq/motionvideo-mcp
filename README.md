@@ -51,6 +51,9 @@ at it:
 MOTIONVIDEO_SITE_URL=http://localhost:3000 pnpm dev
 ```
 
+See [docs/catalog-data.md](docs/catalog-data.md) for the design behind this
+(caching, failure modes, and why the site owns the data).
+
 ## Deploy
 
 ```bash
