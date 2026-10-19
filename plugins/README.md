@@ -87,9 +87,24 @@ Notes: submitting needs a paid Claude plan; this repository is already public, s
 3. **One-click install for users** — `https://cursor.com/install-mcp?name=motionvideo&config=eyJ1cmwiOiAiaHR0cHM6Ly9tY3AubW90aW9udmlkZW8ueHl6L21jcCJ9` (the `cursor://anysphere.cursor-deeplink/...` form of the same link opens the desktop app directly).
 4. **Community listing** — [cursor.directory](https://cursor.directory) accepts free MCP server submissions.
 
+## Submit to Grok Bot (xAI — one form also covers Cursor)
+
+[x.ai/bot/marketplace/submit-a-plugin](https://x.ai/bot/marketplace/submit-a-plugin) distributes a plugin or MCP server to Grok (coming soon), **Grok Bot**, and **Cursor** users, reviewed by hand. Everything the form asks for is ready below; only your name and work email are missing:
+
+- **Organization Name** — MotionVideo
+- **Organization Handle** — motionvideo
+- **Website URL** — https://motionvideo.xyz
+- **Logotype URL** — `https://raw.githubusercontent.com/motionvideohq/motionvideo-mcp/main/plugins/motionvideo/assets/icon.svg` (1:1 with background plate — verified live)
+- **Where do you want to be listed?** — Grok Bot · Cursor
+- **MCP Server URL or Public GitHub Repository** — `https://mcp.motionvideo.xyz/mcp`
+- **Brief Description** — MotionVideo brings the motionvideo.xyz catalog of AI-made motion videos to your bot: find references by keyword or content category, pull the original prompt behind any entry, browse motion tools and studios, and adapt the prompts into new motion work. Read-only, no sign-in.
+- **Testing Instructions** — Connect the MCP server `https://mcp.motionvideo.xyz/mcp` (no authentication). Then: 1) "Find motion video references for a kinetic typography intro" → a gallery of matching entries with previews. 2) "Pull the original prompt behind twoclipping-5cba86" → the full prompt, model metadata, and source link. 3) "Which motion studios can I hire for a product launch video?" → studio entries from the directory. All four tools (`search-videos`, `get-video`, `list-categories`, `browse-directory`) are read-only against a public catalog. Source: `https://github.com/motionvideohq/motionvideo-mcp` (plugin at `plugins/motionvideo`).
+
+The "I've tested this plugin locally and in-app" box expects a real test in the Grok Bot app (macOS download, included with Premium and up) or Cursor — only tick it after doing that. Grok Bot itself needs a paid plan to install; if you don't have one, list for Cursor through the same form or skip the box.
+
 ## Grok, VS Code, and the rest
 
-- **Grok** — no submission path yet (xAI's connector catalog is curated), but users can add the server themselves: [grok.com/connectors](https://grok.com/connectors) → New Connector → Custom → `https://mcp.motionvideo.xyz/mcp` (no auth). Grok CLI users: `grok mcp add --transport http motionvideo https://mcp.motionvideo.xyz/mcp`.
+- **Grok (chat)** — no listing submission yet (the connector catalog is curated), but users can add the server themselves: [grok.com/connectors](https://grok.com/connectors) → New Connector → Custom → `https://mcp.motionvideo.xyz/mcp` (no auth). Grok CLI users: `grok mcp add --transport http motionvideo https://mcp.motionvideo.xyz/mcp`. The marketplace listing goes through the Grok Bot submission form above.
 - **VS Code** — one-click install link (paste into a browser): `vscode:mcp/install?%7B%22name%22%3A%22motionvideo%22%2C%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmcp.motionvideo.xyz%2Fmcp%22%7D`. GitHub strips `vscode:` links in Markdown, so keep it in code blocks.
 - **Aggregators (free)** — the Official MCP Registry (`mcp-publisher` CLI + a DNS TXT record on motionvideo.xyz), then Smithery; Glama, PulseMCP, and similar directories crawl the registry.
 
@@ -98,6 +113,7 @@ Notes: submitting needs a paid Claude plan; this repository is already public, s
 - [ ] For OpenAI domain verification, set `OPENAI_APPS_CHALLENGE` to the token the portal shows (Manufact dashboard → Environment variables); the server serves it at `https://mcp.motionvideo.xyz/.well-known/openai-apps-challenge`.
 - [ ] Run the free quality report at manufact.com/mcp-catalog and fix anything it flags.
 - [ ] Record the demo walkthrough video required for OpenAI MCP review (free: QuickTime or OBS).
-- [ ] Submit the plugin to the Cursor Marketplace (repo link; optional path `plugins/motionvideo`).
+- [ ] Submit via [x.ai/bot/marketplace/submit-a-plugin](https://x.ai/bot/marketplace/submit-a-plugin) — tick **Grok Bot** and **Cursor**; every field value is prepared in the Grok Bot section above.
+- [ ] Alternative for Cursor only: [cursor.com/marketplace/publish](https://cursor.com/marketplace/publish) with the repo link (optional path `plugins/motionvideo`).
 - [ ] Confirm the OpenAI category in the dashboard ("Productivity" in the manifest).
 - [ ] Optional, free: publish to the Official MCP Registry + Smithery so aggregator directories pick it up.
