@@ -1,6 +1,6 @@
 # Plugin distribution
 
-One plugin folder, two ecosystems. `plugins/motionvideo/` is a valid plugin for both the OpenAI directory (ChatGPT + Codex) and Anthropic's Claude directory, hosted in this repository rather than a separate one.
+One plugin folder, every ecosystem. `plugins/motionvideo/` is a single [Agent Plugin](https://agent-plugins.org) that targets the OpenAI directory (ChatGPT + Codex), Anthropic's Claude directory, and the Cursor Marketplace — hosted in this repository rather than a separate one.
 
 ```
 plugins/motionvideo/
@@ -52,15 +52,15 @@ pnpm exec mcp-use screenshot --mcp https://mcp.motionvideo.xyz/mcp \
 - **Claude Code**: `claude --plugin-dir ./plugins/motionvideo` (skills appear as `/motionvideo:motionvideo`), or register the repo marketplace: `claude plugin marketplace add ./` then `/plugin install motionvideo@motionvideo`.
 - **ChatGPT desktop / Codex**: the repo marketplace at `.agents/plugins/marketplace.json` shows up in the Plugins Directory after a restart.
 
-## Let Manufact prepare the submission (do this first)
+## Free checks (no paid plans)
 
-Manufact Cloud automates the server-side work every directory asks for, for this server:
+Everything here stays inside Manufact's free limits — nothing needs Hobby:
 
-1. **Publish → Checklist** — audits protocol compliance, tool schemas, metadata, and error handling, with "How to fix" guidance and an autofix flow. On Hobby and above it also runs **end-to-end checks in live ChatGPT and Claude** (tool calls + widget rendering). Basic runs are $0.10; E2E runs $2. A free anonymous report works at [manufact.com/mcp-catalog](https://manufact.com/mcp-catalog).
-2. **Testing** — run test suites across clients and models, then try the server live via **Public Chat**.
-3. **Publish → Submission pack** (Hobby+, $5/generation) — drafts the directory listing copy (name, descriptions, category), tool justifications, and reviewer test-case templates, and can generate the **demo video and carousel screenshots** the directories ask for.
+- **Free quality report** — paste `https://mcp.motionvideo.xyz/mcp` at [manufact.com/mcp-catalog](https://manufact.com/mcp-catalog): overall quality score, the same basic publishing checks as the dashboard, per-tool documentation feedback, no account needed.
+- **Screenshots** — captured locally for free with `mcp-use screenshot` (see Commands) and committed in `plugins/motionvideo/assets/screenshots/`.
+- **Demo video** — record it yourself (QuickTime, OBS): free.
 
-Two honesty notes: Manufact prepares and pre-validates the materials, but it does not press publish in the stores — the final submission is still made in OpenAI's and Anthropic's portals. And the plugin manifests + skill bundle in this folder are what those portals consume; the checklist and submission pack cover the connector/server materials.
+Skipped on purpose (paid): dashboard checklist runs ($0.10), ChatGPT/Claude end-to-end checks ($2, Hobby+), and the Submission pack ($5, Hobby+). The free report covers the same basic publishing checks the dashboard runs.
 
 ## Submit to OpenAI (ChatGPT + Codex)
 
@@ -78,8 +78,26 @@ Claude wants **two submissions** from this repo — submit the connector first s
 
 Notes: submitting needs a paid Claude plan; this repository is already public, so publishing is unblocked. Version bumps: raise `version` in both `plugin.json` files on every release.
 
+## Submit to Cursor
+
+`plugins/motionvideo/` is already a valid [Agent Plugin](https://agent-plugins.org) — the open standard Cursor loads natively (root `plugin.json`, `skills/`, `mcp.json`; no Cursor-specific manifest needed).
+
+1. **Submit for review** — [cursor.com/marketplace/publish](https://cursor.com/marketplace/publish) → repository `motionvideohq/motionvideo-mcp` (mention plugin path `plugins/motionvideo` if the form asks). Reviews are manual; plugins must be open source — this repo is public and MIT-licensed.
+2. **Test locally first** — copy the folder to `~/.cursor/plugins/local/motionvideo`, reload Cursor, and confirm the skill and MCP server appear under Customize.
+3. **One-click install for users** — `https://cursor.com/install-mcp?name=motionvideo&config=eyJ1cmwiOiAiaHR0cHM6Ly9tY3AubW90aW9udmlkZW8ueHl6L21jcCJ9` (the `cursor://anysphere.cursor-deeplink/...` form of the same link opens the desktop app directly).
+4. **Community listing** — [cursor.directory](https://cursor.directory) accepts free MCP server submissions.
+
+## Grok, VS Code, and the rest
+
+- **Grok** — no submission path yet (xAI's connector catalog is curated), but users can add the server themselves: [grok.com/connectors](https://grok.com/connectors) → New Connector → Custom → `https://mcp.motionvideo.xyz/mcp` (no auth). Grok CLI users: `grok mcp add --transport http motionvideo https://mcp.motionvideo.xyz/mcp`.
+- **VS Code** — one-click install link (paste into a browser): `vscode:mcp/install?%7B%22name%22%3A%22motionvideo%22%2C%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmcp.motionvideo.xyz%2Fmcp%22%7D`. GitHub strips `vscode:` links in Markdown, so keep it in code blocks.
+- **Aggregators (free)** — the Official MCP Registry (`mcp-publisher` CLI + a DNS TXT record on motionvideo.xyz), then Smithery; Glama, PulseMCP, and similar directories crawl the registry.
+
 ## Open items
 
 - [ ] For OpenAI domain verification, set `OPENAI_APPS_CHALLENGE` to the token the portal shows (Manufact dashboard → Environment variables); the server serves it at `https://mcp.motionvideo.xyz/.well-known/openai-apps-challenge`.
-- [ ] Record the demo walkthrough video required for OpenAI MCP review, or generate it with the Manufact Submission pack (Publish → Submission pack, Hobby+).
+- [ ] Run the free quality report at manufact.com/mcp-catalog and fix anything it flags.
+- [ ] Record the demo walkthrough video required for OpenAI MCP review (free: QuickTime or OBS).
+- [ ] Submit the plugin to the Cursor Marketplace (repo link; optional path `plugins/motionvideo`).
 - [ ] Confirm the OpenAI category in the dashboard ("Productivity" in the manifest).
+- [ ] Optional, free: publish to the Official MCP Registry + Smithery so aggregator directories pick it up.

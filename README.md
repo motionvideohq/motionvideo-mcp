@@ -59,9 +59,11 @@ The deployed server (`https://mcp.motionvideo.xyz/mcp`) works as a connector in 
 - **ChatGPT** — Settings → Apps → Advanced → Create app → paste the URL (No Auth).
 - **Claude** — Settings → Connectors → Add custom connector → same URL (No sign-in).
 - **Claude Code** — `claude plugin marketplace add motionvideohq/motionvideo-mcp`, then `/plugin install motionvideo`.
-- **Cursor, VS Code, and other MCP clients** — point them at the same URL.
+- **Cursor** — [Add to Cursor](https://cursor.com/install-mcp?name=motionvideo&config=eyJ1cmwiOiAiaHR0cHM6Ly9tY3AubW90aW9udmlkZW8ueHl6L21jcCJ9), or Customize → MCPs → add the URL.
+- **Grok** — grok.com/connectors → New Connector → Custom → paste the URL; CLI: `grok mcp add --transport http motionvideo https://mcp.motionvideo.xyz/mcp`.
+- **VS Code and other MCP clients** — point them at the same URL; a one-click VS Code link is in [plugins/README.md](plugins/README.md).
 
-The directory-ready plugin package for ChatGPT and Claude lives in `plugins/motionvideo/`; submission steps are in [plugins/README.md](plugins/README.md).
+The same plugin folder targets ChatGPT, Claude, and Cursor (Agent Plugins standard): `plugins/motionvideo/` — submission steps in [plugins/README.md](plugins/README.md).
 
 ## License
 
