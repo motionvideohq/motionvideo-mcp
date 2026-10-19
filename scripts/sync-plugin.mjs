@@ -13,6 +13,15 @@ const copies = [
     "skills/motionvideo/SKILL.md",
     "plugins/motionvideo/skills/motionvideo/SKILL.md",
   ],
+  [
+    "skills/motionvideo/SKILL.md",
+    "plugins/antigravity/skills/motionvideo/SKILL.md",
+  ],
+  [
+    "skills/motionvideo/mcp.json",
+    "plugins/motionvideo/skills/motionvideo/mcp.json",
+  ],
+  ["kimi.plugin.json", "plugins/motionvideo/kimi.plugin.json"],
   ["public/icon.svg", "plugins/motionvideo/assets/icon.svg"],
 ];
 

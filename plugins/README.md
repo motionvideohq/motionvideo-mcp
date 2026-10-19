@@ -1,6 +1,6 @@
 # Plugin distribution
 
-One plugin folder, every ecosystem. `plugins/motionvideo/` is a single [Agent Plugin](https://agent-plugins.org) that targets the OpenAI directory (ChatGPT + Codex), Anthropic's Claude directory, and the Cursor Marketplace — hosted in this repository rather than a separate one.
+One plugin folder, every ecosystem. `plugins/motionvideo/` is a single [Agent Plugin](https://agent-plugins.org) that targets the OpenAI directory (ChatGPT + Codex), Anthropic's Claude directory, the Cursor Marketplace, and the long tail of agent IDEs that load the standard — plus thin host-native manifests (Gemini CLI, Kimi Code, Antigravity, Kiro, ZCode, Droid, Devin) for the tools that want their own file.
 
 ```
 plugins/motionvideo/
@@ -8,11 +8,18 @@ plugins/motionvideo/
 ├── .mcp.json                    Claude MCP wiring  → https://mcp.motionvideo.xyz/mcp
 ├── plugin.json                  OpenAI portable manifest (+ extensions.com.openai)
 ├── mcp.json                     OpenAI portable MCP wiring (streamable-http, no auth)
-├── skills/motionvideo/SKILL.md  synced copy of /skills/motionvideo
+├── kimi.plugin.json             Kimi Code CLI manifest (synced copy)
+├── skills/motionvideo/          synced copy of /skills/motionvideo: SKILL.md + Amp's sibling mcp.json
 ├── assets/icon.svg              synced copy of /public/icon.svg
 ├── assets/screenshots/*.png     carousel screenshots captured from the live views
 └── README.md                    listing description (Claude shows this README)
 ```
+
+The host files that live outside the folder (they must sit at the repo root, or belong to another host's bundle):
+
+- `gemini-extension.json` at the absolute repo root — Gemini CLI installs and the gallery crawler both require it there.
+- `kimi.plugin.json` at the repo root — same content as the plugin copy, for `/plugins install <repo URL>`.
+- `plugins/antigravity/` — Antigravity bundle: `plugin.json`, `mcp_config.json`, and a synced skill copy.
 
 Plus two repository marketplaces that make the plugin installable straight from git, for local testing and for anyone who wants it before store approval:
 
@@ -51,6 +58,10 @@ pnpm exec mcp-use screenshot --mcp https://mcp.motionvideo.xyz/mcp \
 
 - **Claude Code**: `claude --plugin-dir ./plugins/motionvideo` (skills appear as `/motionvideo:motionvideo`), or register the repo marketplace: `claude plugin marketplace add ./` then `/plugin install motionvideo@motionvideo`.
 - **ChatGPT desktop / Codex**: the repo marketplace at `.agents/plugins/marketplace.json` shows up in the Plugins Directory after a restart.
+- **Droid**: `droid plugin marketplace add ./` then `droid plugin install motionvideo@motionvideo`.
+- **Gemini CLI**: `gemini extensions link .` from the repo root.
+- **Kimi Code**: `kimi plugin install ./plugins/motionvideo`.
+- **Antigravity**: `agy plugin install ./plugins/antigravity` (or `/plugin install ./plugins/antigravity` in the TUI).
 
 ## Free checks (no paid plans)
 
@@ -108,6 +119,114 @@ The "I've tested this plugin locally and in-app" box expects a real test in the 
 - **VS Code** — one-click install link (paste into a browser): `vscode:mcp/install?%7B%22name%22%3A%22motionvideo%22%2C%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmcp.motionvideo.xyz%2Fmcp%22%7D`. GitHub strips `vscode:` links in Markdown, so keep it in code blocks.
 - **Aggregators (free)** — the Official MCP Registry (`mcp-publisher` CLI + a DNS TXT record on motionvideo.xyz), then Smithery; Glama, PulseMCP, and similar directories crawl the registry.
 
+## More ADEs, agents, and terminals
+
+Beyond the store listings, the same server installs across the rest of the agent tooling — natively where the host has a plugin format, one line where it doesn't:
+
+### Amp
+
+```bash
+amp mcp add motionvideo https://mcp.motionvideo.xyz/mcp
+```
+
+Amp recommends bundling MCP inside skills, which this repo does: copy `skills/motionvideo/` (its sibling `mcp.json` declares the server) into `.agents/skills/`, and Amp keeps the tools hidden until the skill loads.
+
+### Droid (Factory)
+
+```bash
+droid mcp add motionvideo https://mcp.motionvideo.xyz/mcp --type http   # MCP only
+droid plugin marketplace add motionvideohq/motionvideo-mcp              # full plugin
+droid plugin install motionvideo@motionvideo --scope user
+```
+
+Droid's marketplace loader falls back to `.claude-plugin/marketplace.json` and translates the Claude layout (`.claude-plugin/` → `.factory-plugin/`, `.mcp.json` → `mcp.json`), so everything in this repo works untouched.
+
+### Gemini CLI
+
+```bash
+gemini extensions install https://github.com/motionvideohq/motionvideo-mcp
+```
+
+`gemini-extension.json` sits at the repo root (absolute root — the gallery crawler and installer both require it there), wires the server through `httpUrl`, and the extension ships the skill from `skills/`. The [gallery](https://geminicli.com/extensions/browse/) indexes any public repo carrying the `gemini-cli-extension` topic; this repo has it. (Google is moving free users to the Antigravity CLI below; Gemini CLI extensions remain for paid plans.)
+
+### Antigravity (Gemini's successor)
+
+`plugins/antigravity/` is a native bundle — `plugin.json`, `mcp_config.json`, and the skill:
+
+```bash
+git clone https://github.com/motionvideohq/motionvideo-mcp && cd motionvideo-mcp
+agy plugin install ./plugins/antigravity
+```
+
+No clone? Copy the folder to `.agents/plugins/` in a workspace, or `~/.gemini/config/plugins/` globally. The official marketplace listing goes through the Discover tab's "submit a plugin" link, which opens an interest form.
+
+### Kimi Code
+
+```bash
+kimi plugin install https://github.com/motionvideohq/motionvideo-mcp
+```
+
+or in the CLI: `/plugins install https://github.com/motionvideohq/motionvideo-mcp`. The `kimi.plugin.json` at the repo root (and inside `plugins/motionvideo/` for local installs) declares the skill and the MCP server. For the consumer Kimi app, the Plugin Builder converts an existing Claude/Codex plugin into one — the [submission guide](https://www.kimi.com/help/kimi-work/plugin-submission-guide) walks through it.
+
+### Kiro
+
+Powers panel → **Add Custom Power** → **Import power from GitHub** → `https://github.com/motionvideohq/motionvideo-mcp/tree/main/plugins/motionvideo`.
+
+Kiro powers follow the Agent Plugins format, so our folder imports as-is — `plugin.json`, `mcp.json`, bundled skill, no POWER.md needed. The curated kiro.dev/powers listing uses its "Submit a power" flow; the GitHub import works today.
+
+### ZCode
+
+Settings → Plugins → Create → **Add marketplace** → `motionvideohq/motionvideo-mcp`, then install MotionVideo.
+
+ZCode reads the repo's `.claude-plugin/marketplace.json`, and the plugin's `.claude-plugin/plugin.json` + `.mcp.json` (Claude-layout fallback is built in; `.zcode-plugin/plugin.json` is only its preferred prefix). MCP-only: add `https://mcp.motionvideo.xyz/mcp` on the MCP page, or import it from an already-configured client — ZCode reads Claude/Cursor/Codex configs.
+
+### MiMo Code
+
+`mimo mcp add`, or edit `mimocode.json` / `.mimocode/mimocode.json`:
+
+```json
+{ "mcp": { "motionvideo": { "type": "remote", "url": "https://mcp.motionvideo.xyz/mcp", "enabled": true } } }
+```
+
+Copy `skills/motionvideo/` into `.agents/skills/` for the skill — MiMo scans that compatibility folder by default.
+
+### DeepSeek Harness
+
+DSH talks MCP through its official `@deepseek-ai/dsh-mcp-client` bridge plugin — add a row to the profile's `cordis.patch.yml` (e.g. `$DSH_HOME/profiles/web/cordis.patch.yml`):
+
+```yaml
+- insert:
+    - id: mcp-motionvideo
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: motionvideo
+        transport: streamable-http
+        url: https://mcp.motionvideo.xyz/mcp
+```
+
+Tools surface as `mcp__motionvideo__*`. If YAML isn't your thing, the community `dsh-mcp` plugin adds a Settings → MCP page with a search-based injection mode.
+
+### Pi
+
+```bash
+pi install npm:pi-mcp-adapter   # MCP support for Pi
+pi mcp add                      # walk through adding the server (or point it at an .mcp.json)
+```
+
+Skill: copy `skills/motionvideo/` into `.agents/skills/`.
+
+### Devin
+
+```bash
+devin plugins install motionvideohq/motionvideo-mcp#plugins/motionvideo
+```
+
+Devin loads Agent Plugins 1.0.0 directly (root `plugin.json` + `mcp.json` + `skills/`), and Claude-layout plugins as-is — ours qualifies both ways.
+
+### Herdr
+
+Not a fit: Herdr plugins are executable workflow packages (`herdr-plugin.toml` + scripts), not MCP consumers. Agents running inside Herdr keep using their own MCP configs from the sections above.
+
 ## Open items
 
 - [ ] For OpenAI domain verification, set `OPENAI_APPS_CHALLENGE` to the token the portal shows (Manufact dashboard → Environment variables); the server serves it at `https://mcp.motionvideo.xyz/.well-known/openai-apps-challenge`.
@@ -117,3 +236,7 @@ The "I've tested this plugin locally and in-app" box expects a real test in the 
 - [ ] Alternative for Cursor only: [cursor.com/marketplace/publish](https://cursor.com/marketplace/publish) with the repo link (optional path `plugins/motionvideo`).
 - [ ] Confirm the OpenAI category in the dashboard ("Productivity" in the manifest).
 - [ ] Optional, free: publish to the Official MCP Registry + Smithery so aggregator directories pick it up.
+- [ ] Gemini gallery — the repo carries the `gemini-cli-extension` topic; the crawler lists it at geminicli.com/extensions within a day.
+- [ ] Antigravity marketplace — the Discover tab's "submit a plugin" link (interest form) for the official listing.
+- [ ] Kimi Work (consumer app) — Plugin Builder submission built from the Claude/Codex plugin, per the linked guide.
+- [ ] Kiro curated listing — "Submit a power" on kiro.dev/powers (optional; the GitHub import works today).

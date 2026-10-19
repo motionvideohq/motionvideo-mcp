@@ -62,8 +62,9 @@ The deployed server (`https://mcp.motionvideo.xyz/mcp`) works as a connector in 
 - **Cursor** — [Add to Cursor](https://cursor.com/install-mcp?name=motionvideo&config=eyJ1cmwiOiAiaHR0cHM6Ly9tY3AubW90aW9udmlkZW8ueHl6L21jcCJ9), or Customize → MCPs → add the URL.
 - **Grok** — grok.com/connectors → New Connector → Custom → paste the URL; CLI: `grok mcp add --transport http motionvideo https://mcp.motionvideo.xyz/mcp`.
 - **VS Code and other MCP clients** — point them at the same URL; a one-click VS Code link is in [plugins/README.md](plugins/README.md).
+- **More agents and ADEs** — Amp, Droid, Gemini CLI, Antigravity, Kimi Code, Kiro, ZCode, MiMo Code, DeepSeek Harness, Pi, Devin: each gets a one-line install in [plugins/README.md](plugins/README.md).
 
-The same plugin folder targets ChatGPT, Claude, and Cursor (Agent Plugins standard): `plugins/motionvideo/` — submission steps in [plugins/README.md](plugins/README.md).
+The same plugin folder targets ChatGPT, Claude, Cursor, Kiro, ZCode, Droid, Devin, and Kimi Code (Agent Plugins standard), and the repo ships native bundles for Gemini CLI and Antigravity: `plugins/motionvideo/` — submission steps in [plugins/README.md](plugins/README.md).
 
 ## License
 

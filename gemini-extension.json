@@ -1,0 +1,10 @@
+{
+  "name": "motionvideo",
+  "version": "1.0.0",
+  "description": "Search the motionvideo.xyz catalog of AI-made motion videos, pull the original prompts behind them, and browse the motion tools and studios around them.",
+  "mcpServers": {
+    "motionvideo": {
+      "httpUrl": "https://mcp.motionvideo.xyz/mcp"
+    }
+  }
+}
