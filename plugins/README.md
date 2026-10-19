@@ -185,7 +185,15 @@ ZCode reads the repo's `.claude-plugin/marketplace.json`, and the plugin's `.cla
 `mimo mcp add`, or edit `mimocode.json` / `.mimocode/mimocode.json`:
 
 ```json
-{ "mcp": { "motionvideo": { "type": "remote", "url": "https://mcp.motionvideo.xyz/mcp", "enabled": true } } }
+{
+  "mcp": {
+    "motionvideo": {
+      "type": "remote",
+      "url": "https://mcp.motionvideo.xyz/mcp",
+      "enabled": true
+    }
+  }
+}
 ```
 
 Copy `skills/motionvideo/` into `.agents/skills/` for the skill â€” MiMo scans that compatibility folder by default.
@@ -197,7 +205,7 @@ DSH talks MCP through its official `@deepseek-ai/dsh-mcp-client` bridge plugin â
 ```yaml
 - insert:
     - id: mcp-motionvideo
-      name: '@deepseek-ai/dsh-mcp-client'
+      name: "@deepseek-ai/dsh-mcp-client"
       config:
         serverName: motionvideo
         transport: streamable-http
