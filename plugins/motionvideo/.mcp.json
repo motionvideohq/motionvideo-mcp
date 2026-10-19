@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "motionvideo": {
+      "type": "http",
+      "url": "https://mcp.motionvideo.xyz/mcp"
+    }
+  }
+}

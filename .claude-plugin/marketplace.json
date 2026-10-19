@@ -1,0 +1,15 @@
+{
+  "name": "motionvideo",
+  "description": "MotionVideo plugins for Claude, ChatGPT, and Codex — motion design references with the prompts behind them.",
+  "owner": {
+    "name": "MotionVideo",
+    "url": "https://motionvideo.xyz"
+  },
+  "plugins": [
+    {
+      "name": "motionvideo",
+      "source": "./plugins/motionvideo",
+      "description": "Search the motionvideo.xyz catalog of AI-made motion videos, pull the original prompts behind them, and browse motion tools and studios."
+    }
+  ]
+}

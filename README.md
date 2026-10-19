@@ -52,6 +52,17 @@ MOTIONVIDEO_SITE_URL=http://localhost:3000 pnpm dev
 pnpm deploy     # deploys to Manufact Cloud (linked on first run)
 ```
 
+## Use it everywhere
+
+The deployed server (`https://mcp.motionvideo.xyz/mcp`) works as a connector in any MCP client, and this repo doubles as a plugin marketplace:
+
+- **ChatGPT** — Settings → Apps → Advanced → Create app → paste the URL (No Auth).
+- **Claude** — Settings → Connectors → Add custom connector → same URL (No sign-in).
+- **Claude Code** — `claude plugin marketplace add motionvideohq/motionvideo-mcp`, then `/plugin install motionvideo`.
+- **Cursor, VS Code, and other MCP clients** — point them at the same URL.
+
+The directory-ready plugin package for ChatGPT and Claude lives in `plugins/motionvideo/`; submission steps are in [plugins/README.md](plugins/README.md).
+
 ## License
 
 MIT. The MotionVideo brand and catalog content belong to motionvideo.xyz.

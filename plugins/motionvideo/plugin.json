@@ -1,0 +1,112 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "motionvideo",
+  "version": "1.0.0",
+  "description": "Search the motionvideo.xyz catalog of AI-made motion videos, pull the original prompts behind them, and browse the motion tools and studios around them.",
+  "author": {
+    "name": "MotionVideo",
+    "url": "https://motionvideo.xyz"
+  },
+  "homepage": "https://motionvideo.xyz",
+  "repository": "https://github.com/motionvideohq/motionvideo-mcp",
+  "license": "MIT",
+  "keywords": [
+    "motion design",
+    "video",
+    "AI",
+    "prompts",
+    "inspiration",
+    "references"
+  ],
+  "extensions": {
+    "com.openai": {
+      "onboardingSkill": "./skills/motionvideo/SKILL.md",
+      "interface": {
+        "displayName": "MotionVideo",
+        "shortDescription": "Motion design references",
+        "longDescription": "MotionVideo puts the motionvideo.xyz catalog of AI-made motion videos inside ChatGPT and Codex. Search references by keyword or content category, pull the original prompt behind any entry along with the model and settings its creator used, browse the motion tools and studios in the directory, and adapt the prompts into your own motion work. Every tool is read-only and works without sign-in. Results credit the original creators and link to the source page. Useful for motion designers, brand teams, and anyone who wants a video like this before writing a single prompt.",
+        "developerName": "MotionVideo",
+        "category": "Productivity",
+        "capabilities": [
+          "Search motion video references",
+          "Read original prompts",
+          "Browse motion tools and studios"
+        ],
+        "websiteURL": "https://motionvideo.xyz",
+        "supportURL": "https://motionvideo.xyz/contact",
+        "privacyPolicyURL": "https://motionvideo.xyz/privacy",
+        "termsOfServiceURL": "https://motionvideo.xyz/terms",
+        "defaultPrompt": [
+          "Find motion video references for a kinetic typography intro.",
+          "Pull the original prompt behind twoclipping-5cba86.",
+          "Which motion studios can I hire for a product launch video?"
+        ],
+        "brandColor": "#C68A00",
+        "brandColorDark": "#FFBE25",
+        "composerIcon": "./assets/icon.svg",
+        "logo": "./assets/icon.svg",
+        "screenshots": [
+          "./assets/screenshots/gallery-light.png",
+          "./assets/screenshots/gallery-dark.png",
+          "./assets/screenshots/detail-light.png",
+          "./assets/screenshots/detail-dark.png"
+        ]
+      },
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Search by keywords",
+              "prompt": "Find motion video references for a kinetic typography intro.",
+              "tools_triggered": "search-videos",
+              "expected_behavior": "Returns matching catalog entries with titles, creators, preview and page links, and renders the video gallery view."
+            },
+            {
+              "description": "Filter by content category",
+              "prompt": "Show me the newest logo animation references from the catalog.",
+              "tools_triggered": "search-videos",
+              "expected_behavior": "Filters by a content category with newest-first sorting and returns matching entries with previews."
+            },
+            {
+              "description": "Pull the original prompt behind an entry",
+              "prompt": "Pull the original prompt behind twoclipping-5cba86 so I can adapt it for my brand.",
+              "tools_triggered": "get-video",
+              "expected_behavior": "Returns the entry's original prompt, model and effort metadata, media links, and the source page URL to credit."
+            },
+            {
+              "description": "Explain the catalog categories",
+              "prompt": "What kinds of motion content are in the MotionVideo catalog?",
+              "tools_triggered": "list-categories",
+              "expected_behavior": "Lists every catalog category with video counts and a short description."
+            },
+            {
+              "description": "Find production help",
+              "prompt": "Which motion studios can I hire to produce a product launch video?",
+              "tools_triggered": "browse-directory",
+              "expected_behavior": "Returns studio entries from the studios directory with descriptions and links."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Generate video content",
+              "prompt": "Generate a ten-second animated logo video for me right now."
+            },
+            {
+              "description": "Bulk download the catalog",
+              "prompt": "Download the whole MotionVideo catalog as a CSV file."
+            },
+            {
+              "description": "Access private systems",
+              "prompt": "Open the private analytics dashboard for motionvideo.xyz."
+            }
+          ]
+        },
+        "commerce": false,
+        "commerce_description": "The plugin searches a public, read-only catalog. It sells nothing and processes no payments."
+      },
+      "publication": {
+        "release_notes": "Initial release: search motion video references, read the original prompts behind them, and browse the motion tools and studios directory."
+      }
+    }
+  }
+}

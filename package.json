@@ -25,7 +25,10 @@
     "format": "oxfmt",
     "check": "ultracite check",
     "fix": "ultracite fix",
-    "prepare": "lefthook install"
+    "plugin:sync": "node scripts/sync-plugin.mjs",
+    "plugin:validate": "claude plugin validate ./plugins/motionvideo && claude plugin validate .",
+    "plugin:zip": "mkdir -p dist && rm -f dist/motionvideo-openai-plugin.zip dist/motionvideo-claude-plugin.zip && cd plugins/motionvideo && zip -qr ../../dist/motionvideo-openai-plugin.zip plugin.json mcp.json skills assets README.md -x '**/.DS_Store' && zip -qr ../../dist/motionvideo-claude-plugin.zip .claude-plugin .mcp.json plugin.json mcp.json skills assets README.md -x '**/.DS_Store'",
+    "prepare": "lefthook install || true"
   },
   "dependencies": {
     "mcp-use": "2.10.1",
