@@ -39,6 +39,21 @@ const server = new MCPServer({
   websiteUrl: "https://motionvideo.xyz",
 });
 
+// OpenAI app-directory domain verification. Set OPENAI_APPS_CHALLENGE to the
+// token OpenAI shows in its dashboard (Manufact → Environment variables) and
+// this serves it at
+// https://mcp.motionvideo.xyz/.well-known/openai-apps-challenge; without the
+// env var the path stays a 404.
+server.get("/.well-known/openai-apps-challenge", (c) => {
+  const token = process.env.OPENAI_APPS_CHALLENGE;
+
+  if (!token) {
+    return c.notFound();
+  }
+
+  return c.text(token);
+});
+
 // ---------------------------------------------------------------------------
 // Catalog access
 // ---------------------------------------------------------------------------
