@@ -7,7 +7,7 @@ plugins/motionvideo/
 ├── .claude-plugin/plugin.json   Claude manifest (name, version, description…)
 ├── .mcp.json                    Claude MCP wiring  → https://mcp.motionvideo.xyz/mcp
 ├── plugin.json                  OpenAI portable manifest (+ extensions.com.openai)
-├── mcp.json                     OpenAI portable MCP wiring (streamable-http, no auth)
+├── mcp.json                     portable MCP wiring (streamable-http; client-managed OAuth)
 ├── kimi.plugin.json             Kimi Code CLI manifest (synced copy)
 ├── skills/motionvideo/          synced copy of /skills/motionvideo: SKILL.md + Amp's sibling mcp.json
 ├── assets/icon.svg              synced copy of /public/icon.svg
@@ -30,12 +30,12 @@ Plus two repository marketplaces that make the plugin installable straight from 
 
 - Anthropic reads the plugin from a subfolder: "If the plugin is one folder in a larger repository, give that folder as the plugin path when you submit; the directory reads and scans only that folder." The submission is repository `motionvideohq/motionvideo-mcp` + plugin path `plugins/motionvideo`.
 - OpenAI accepts a ZIP built from the same folder, and reads the Claude-compatible manifests alongside the portable ones, so nothing is duplicated.
-- The skill, the server, and the views stay in one place, so a version bump is a single commit — and the plugin can never drift from the deployed server.
+- The skill, server, and views stay in one repository. `plugin:sync` aligns bundled copies and host manifest versions with `package.json`; building, deploying the server, and publishing client bundles remain separate release steps and can drift until each is completed.
 
 ## Commands
 
 ```bash
-pnpm plugin:sync      # refresh the skill/icon copies (lefthook does this on commit)
+pnpm plugin:sync      # align manifest versions and refresh bundled skill/icon/Kimi copies
 pnpm plugin:validate  # claude plugin validate on the plugin and the marketplace
 pnpm plugin:zip       # build dist/*.zip: one for the OpenAI portal, one for claude.ai
 ```
@@ -44,6 +44,10 @@ pnpm plugin:zip       # build dist/*.zip: one for the OpenAI portal, one for cla
 
 - `dist/motionvideo-openai-plugin.zip` — for the OpenAI submission portal. Contains `plugin.json`, `mcp.json`, `skills/`, `assets/`, `README.md`.
 - `dist/motionvideo-claude-plugin.zip` — for a local upload test on claude.ai (Customize → Plugins → Add → Upload plugin).
+
+For release 1.1.1, the portable MCP configuration contains only its schema-backed transport and URL. [Agent Plugins §7.2](https://agent-plugins.org/specification#72-mcp-servers) leaves authorization discovery, sign-in, and credential storage to the client; it defines no portable OAuth fields. The removed `extensions.com.openai.auth.type: none` override both disabled the intended flow and was outside the MCP schema. The Claude manifest now supplies the directory's [`privacyPolicyUrl`](https://code.claude.com/docs/en/plugins-reference#directory-listing-fields); Gemini and Antigravity carry the same release version as the other manifests.
+
+Run `plugin:sync` after changing the package version, build and smoke-test the server, then deploy and check the remote version/capabilities before publishing the ZIPs. See the root [release verification](../README.md#release-111) for smoke evidence and authenticated checks that require an authorized account.
 
 The carousel screenshots in `plugins/motionvideo/assets/screenshots/` were captured from the live server with `mcp-use screenshot` and are linked from `extensions.com.openai.interface.screenshots`. Regenerate them after view changes:
 
@@ -73,10 +77,28 @@ Everything here stays inside Manufact's free limits — nothing needs Hobby:
 
 Skipped on purpose (paid): dashboard checklist runs ($0.10), ChatGPT/Claude end-to-end checks ($2, Hobby+), and the Submission pack ($5, Hobby+). The free report covers the same basic publishing checks the dashboard runs.
 
+## Signing in (account + Pro tools)
+
+The four catalog tools work anonymously. The catalog resources and the `remix-video` prompt need sign-in with a free motionvideo.xyz account. Two optional tools read the user's own account, and the two Pro tools additionally require a plan. Use a client that supports MCP OAuth discovery and challenges, and allow its sign-in flow; do not force a “No Auth”/“No sign-in” override. Clients without OAuth are limited to the public catalog tools:
+
+- `list-bookmarks` — the user's saved videos, tools, studios, skills, and resources, newest first (optional `kind` filter).
+- `my-featured` — the user's community submissions that were featured in the catalog, with links to the featured entries.
+- `search-moves` and `get-move-prompt` — the Moves library's copy-ready prompts, for accounts with an active MotionVideo Pro or Business plan, or a Business seat (seats are linked by email). Signed in without a plan, both return an error pointing to [motionvideo.xyz/pro](https://motionvideo.xyz/pro).
+
+The configured flow, for reviewers:
+
+1. A protected call returns an OAuth challenge with the required `account` scope and `resource_metadata` URL (`https://mcp.motionvideo.xyz/.well-known/oauth-protected-resource/mcp` for production). The client discovers the authorization server at `https://motionvideo.xyz/api/auth` and its dynamic client registration endpoint.
+2. The OAuth-capable client opens the site's sign-in/consent flow and uses authorization code + PKCE. The issuer advertises `openid profile email offline_access account`; `account` is required by this server.
+3. The MCP server verifies the token against the site's JWKS, the configured resource audience (`https://mcp.motionvideo.xyz/mcp` in production), and the required scope. Account/Pro tools forward the verified bearer token to the site's `/api/mcp/*` endpoints; `/moves` enforces the plan. No client secret belongs in the plugin bundle.
+
+The local smoke verified anonymous challenges and metadata, not a completed authorized sign-in or entitlement check. Those need a legitimately authorized account; see the [release status](../README.md#release-111). For local OAuth, the explicit resource audience must match an endpoint allowed by the issuer; see [Development](../README.md#development).
+
+All signed-in tools are strictly read-only; nothing on the site can be changed from chat. Signing in is optional — declining consent, or never calling these tools, leaves the public catalog tools fully usable.
+
 ## Submit to OpenAI (ChatGPT + Codex)
 
 1. Verify the developer identity in the OpenAI organization settings, then open [platform.openai.com/plugins](https://platform.openai.com/plugins) → **Upload new or existing plugin** → upload `dist/motionvideo-openai-plugin.zip`.
-2. **Connect MCP**: URL `https://mcp.motionvideo.xyz/mcp`, auth **none**. For domain verification, set `OPENAI_APPS_CHALLENGE` to the portal's token in the server's environment variables; the server then serves it at `https://mcp.motionvideo.xyz/.well-known/openai-apps-challenge`.
+2. **Connect MCP**: URL `https://mcp.motionvideo.xyz/mcp`; configure OAuth/discovery for the complete connector, not auth **none**. The four catalog tools remain anonymous; protected capabilities require sign-in. First deploy the OAuth-enabled server release and check its metadata. For domain verification, set `OPENAI_APPS_CHALLENGE` to the portal's token in the server's environment variables; the server then serves it at `https://mcp.motionvideo.xyz/.well-known/openai-apps-challenge`.
 3. Resolve automated findings. The manifest already carries the five positive and three negative review test cases; enter the demo walkthrough URL in the portal.
 4. Submit for review, then publish when approved. After publication, MCP tool changes are picked up by OpenAI's daily scans; metadata or skill changes need a new ZIP with a raised `version`.
 
@@ -84,10 +106,10 @@ Skipped on purpose (paid): dashboard checklist runs ($0.10), ChatGPT/Claude end-
 
 Claude wants **two submissions** from this repo — submit the connector first so the plugin can pair with it:
 
-1. **MCP connector** — [claude.ai/directory/manage](https://claude.ai/directory/manage) → **MCP connector** → URL `https://mcp.motionvideo.xyz/mcp` → no authentication. Have ready: listing name/slug, categories, documentation URL, privacy policy (`https://motionvideo.xyz/privacy`), support contact (`https://motionvideo.xyz/contact`), icon, and 3–5 carousel screenshots (PNG, ≥1000px wide, cropped to the app UI — capture the video gallery and detail views). Declare allowed link URIs `https://motionvideo.xyz` and `https://assets.motionvideo.xyz`; third-party destinations (e.g. x.com links) stay unlisted and prompt the user.
+1. **MCP connector** — [claude.ai/directory/manage](https://claude.ai/directory/manage) → **MCP connector** → URL `https://mcp.motionvideo.xyz/mcp`; allow OAuth for account/Pro tools, catalog resources, and the prompt rather than declaring the whole connector unauthenticated. Have ready: listing name/slug, categories, documentation URL, privacy policy (`https://motionvideo.xyz/privacy`), support contact (`https://motionvideo.xyz/contact`), icon, and 3–5 carousel screenshots (PNG, ≥1000px wide, cropped to the app UI — capture the video gallery and detail views). Declare allowed link URIs `https://motionvideo.xyz` and `https://assets.motionvideo.xyz`; third-party destinations (e.g. x.com links) stay unlisted and prompt the user.
 2. **Plugin bundle** — same portal → **Plugin bundle** → repository `motionvideohq/motionvideo-mcp`, plugin path `plugins/motionvideo` → **Validate** → listing details come from `plugin.json` and `README.md`.
 
-Notes: submitting needs a paid Claude plan; this repository is already public, so publishing is unblocked. Version bumps: raise `version` in both `plugin.json` files on every release.
+Notes: submitting needs a paid Claude plan, and the complete connector also needs the OAuth-enabled server deployed and its authorized paths tested. For each release, raise `package.json`'s version and run `pnpm plugin:sync` to update the host manifests.
 
 ## Submit to Cursor
 
@@ -108,14 +130,14 @@ Notes: submitting needs a paid Claude plan; this repository is already public, s
 - **Logotype URL** — `https://raw.githubusercontent.com/motionvideohq/motionvideo-mcp/main/plugins/motionvideo/assets/icon.svg` (1:1 with background plate — verified live)
 - **Where do you want to be listed?** — Grok Bot · Cursor
 - **MCP Server URL or Public GitHub Repository** — `https://mcp.motionvideo.xyz/mcp`
-- **Brief Description** — MotionVideo brings the motionvideo.xyz catalog of AI-made motion videos to your bot: find references by keyword or content category, pull the original prompt behind any entry, browse motion tools and studios, and adapt the prompts into new motion work. Read-only, no sign-in.
-- **Testing Instructions** — Connect the MCP server `https://mcp.motionvideo.xyz/mcp` (no authentication). Then: 1) "Find motion video references for a kinetic typography intro" → a gallery of matching entries with previews. 2) "Pull the original prompt behind twoclipping-5cba86" → the full prompt, model metadata, and source link. 3) "Which motion studios can I hire for a product launch video?" → studio entries from the directory. All four tools (`search-videos`, `get-video`, `list-categories`, `browse-directory`) are read-only against a public catalog. Source: `https://github.com/motionvideohq/motionvideo-mcp` (plugin at `plugins/motionvideo`).
+- **Brief Description** — MotionVideo brings the motionvideo.xyz catalog of AI-made motion videos to your bot: find references by keyword or content category, pull the original prompt behind any entry, browse motion tools and studios, and adapt the prompts into new motion work. Catalog tools are public and read-only; optional tools sign the user in with their MotionVideo account to list their saved bookmarks and featured submissions, and MotionVideo Pro or Business members get copy-ready prompts from the Moves library.
+- **Testing Instructions** — Connect to `https://mcp.motionvideo.xyz/mcp`, leaving OAuth discovery enabled. Then: 1) "Find motion video references for a kinetic typography intro" → a gallery of matching entries with previews. 2) "Pull the original prompt behind twoclipping-5cba86" → the full prompt, model metadata, and source link. 3) "Which motion studios can I hire for a product launch video?" → studio entries from the directory. The four catalog tools (`search-videos`, `get-video`, `list-categories`, `browse-directory`) are read-only and need no account. With the OAuth-enabled release deployed and an authorized free account, also test "List my bookmarks" through sign-in/consent and verify its result. Do not claim that authorized check passed without exercising it. Source: `https://github.com/motionvideohq/motionvideo-mcp` (plugin at `plugins/motionvideo`).
 
 The "I've tested this plugin locally and in-app" box expects a real test in the Grok Bot app (macOS download, included with Premium and up) or Cursor — only tick it after doing that. Grok Bot itself needs a paid plan to install; if you don't have one, list for Cursor through the same form or skip the box.
 
 ## Grok, VS Code, and the rest
 
-- **Grok (chat)** — no listing submission yet (the connector catalog is curated), but users can add the server themselves: [grok.com/connectors](https://grok.com/connectors) → New Connector → Custom → `https://mcp.motionvideo.xyz/mcp` (no auth). Grok CLI users: `grok mcp add --transport http motionvideo https://mcp.motionvideo.xyz/mcp`. The marketplace listing goes through the Grok Bot submission form above.
+- **Grok (chat)** — no listing submission yet (the connector catalog is curated), but users can add the server themselves: [grok.com/connectors](https://grok.com/connectors) → New Connector → Custom → `https://mcp.motionvideo.xyz/mcp`; keep OAuth discovery enabled for protected capabilities. Grok CLI users: `grok mcp add --transport http motionvideo https://mcp.motionvideo.xyz/mcp`. The marketplace listing goes through the Grok Bot submission form above.
 - **VS Code** — one-click install link (paste into a browser): `vscode:mcp/install?%7B%22name%22%3A%22motionvideo%22%2C%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fmcp.motionvideo.xyz%2Fmcp%22%7D`. GitHub strips `vscode:` links in Markdown, so keep it in code blocks.
 - **Aggregators (free)** — the Official MCP Registry (`mcp-publisher` CLI + a DNS TXT record on motionvideo.xyz), then Smithery; Glama, PulseMCP, and similar directories crawl the registry.
 
@@ -237,6 +259,8 @@ Not a fit: Herdr plugins are executable workflow packages (`herdr-plugin.toml` +
 
 ## Open items
 
+- [ ] Deploy this MCP server's 1.1.1 release and verify the remote version, eight tools, responding catalog calls, protected challenges, and OAuth metadata. The site's issuer discovery already exists; that alone does not update the stale MCP deployment.
+- [ ] Complete authorized free-account resource/remix and account-tool checks, then verify no-plan and Pro/Business/seat outcomes with appropriate accounts. These were not exercised without authorized credentials.
 - [ ] For OpenAI domain verification, set `OPENAI_APPS_CHALLENGE` to the token the portal shows (Manufact dashboard → Environment variables); the server serves it at `https://mcp.motionvideo.xyz/.well-known/openai-apps-challenge`.
 - [ ] Run the free quality report at manufact.com/mcp-catalog and fix anything it flags.
 - [ ] Record the demo walkthrough video required for OpenAI MCP review (free: QuickTime or OBS).

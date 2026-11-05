@@ -3,14 +3,7 @@
   "mcpServers": {
     "motionvideo": {
       "type": "streamable-http",
-      "url": "https://mcp.motionvideo.xyz/mcp",
-      "extensions": {
-        "com.openai": {
-          "auth": {
-            "type": "none"
-          }
-        }
-      }
+      "url": "https://mcp.motionvideo.xyz/mcp"
     }
   }
 }

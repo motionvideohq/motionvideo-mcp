@@ -1,6 +1,6 @@
 {
   "name": "motionvideo-mcp",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "description": "MotionVideo MCP app: search the motionvideo.xyz catalog of AI-made motion videos, pull the original prompts behind them, and browse motion tools and studios.",
   "keywords": [
     "manufact",

@@ -12,6 +12,8 @@ pre-commit:
       stage_fixed: true
     - run: pnpm plugin:sync
       glob:
+        - "package.json"
+        - "scripts/sync-plugin.mjs"
         - "skills/**"
         - "kimi.plugin.json"
         - "public/icon.svg"

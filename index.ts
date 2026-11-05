@@ -2,6 +2,8 @@
 // resources, and a prompt. Scaffolded from the mcp-use `mcp-apps` template.
 
 import { MCPServer, completable } from "mcp-use";
+import { oauthBetterAuthProvider } from "mcp-use/oauth/better-auth";
+import type { BetterAuthOAuthUser } from "mcp-use/oauth/better-auth";
 import { z } from "zod";
 
 import {
@@ -20,8 +22,35 @@ import {
   toDetail,
   videoPageUrl,
 } from "./src/catalog.js";
+import {
+  loadProMove,
+  loadProMoves,
+  MOVE_FAMILIES,
+  MOVES_MAX_LIMIT,
+  movePageUrl,
+  searchMoves as searchProMoves,
+} from "./src/pro.js";
 
-const server = new MCPServer({
+// Public site that serves the catalog and hosts the MotionVideo account
+// (Better Auth) this server signs users in with. Overridable for local
+// development against `pnpm dev` on the site.
+const SITE_URL = (
+  process.env.MOTIONVIDEO_SITE_URL ?? "https://motionvideo.xyz"
+).replace(/\/$/u, "");
+
+// The protected resource this server is for OAuth 2.1 purposes: Better Auth
+// stamps access tokens with this audience and the `account` scope, and
+// every signed-in request is checked against both.
+const MCP_RESOURCE =
+  process.env.MOTIONVIDEO_MCP_RESOURCE ?? "https://mcp.motionvideo.xyz/mcp";
+const ACCOUNT_SCOPE = "account";
+
+// Anonymous catalog tools stay open; the account and Pro tools below sign
+// users in with their motionvideo.xyz account (OAuth 2.1, dynamic client
+// registration, consent on the site). The MCP server holds no account
+// secrets: signed-in tools forward the verified access token to the site's
+// `/api/mcp/*`.
+const server = new MCPServer<BetterAuthOAuthUser>({
   description:
     "The motionvideo.xyz catalog: AI-made motion videos with the prompts and skills behind them. Search references, pull original prompts to remix, and browse motion tools and studios.",
   icons: [
@@ -32,10 +61,24 @@ const server = new MCPServer({
     },
   ],
   instructions:
-    "Use search-videos to find motion video references (keywords and/or a content category), then get-video to read the original prompt and how it was made so you can adapt it. list-categories explains the catalog categories; browse-directory covers motion tools and studios. When you remix a prompt, credit the source video page.",
+    "Use search-videos to find motion video references (keywords and/or a content category), then get-video to read the original prompt and how it was made so you can adapt it. list-categories explains the catalog categories; browse-directory covers motion tools and studios. When you remix a prompt, credit the source video page. Catalog tools work without an account; list-bookmarks and my-featured sign the user in with their motionvideo.xyz account and the client offers that on first use. MotionVideo Pro users can also search-moves in the Moves library of named motion techniques and get-move-prompt for a move's copy-ready prompt; these sign the user in the same way and need a MotionVideo Pro or Business plan on that account (Business seat holders included; plans at https://motionvideo.xyz/pro).",
+  mixedAuth: true,
   name: "motionvideo",
+  oauth: oauthBetterAuthProvider({
+    authURL: `${SITE_URL}/api/auth`,
+    requiredScopes: [ACCOUNT_SCOPE],
+    resource: MCP_RESOURCE,
+    resourceName: "MotionVideo",
+    scopesSupported: [
+      "openid",
+      "profile",
+      "email",
+      "offline_access",
+      ACCOUNT_SCOPE,
+    ],
+  }),
   title: "MotionVideo",
-  version: "1.0.0",
+  version: "1.1.1",
   websiteUrl: "https://motionvideo.xyz",
 });
 
@@ -249,6 +292,7 @@ export const searchVideos = server.tool(
       total: z.number().int().describe("Total matches before the limit"),
       videos: z.array(videoSummarySchema),
     }),
+    securitySchemes: [{ type: "noauth" }],
     title: "Search motion videos",
     view: {
       csp: viewCsp,
@@ -306,6 +350,7 @@ export const getVideo = server.tool(
     inputSchema: getVideoInputSchema,
     name: "get-video",
     outputSchema: videoDetailSchema,
+    securitySchemes: [{ type: "noauth" }],
     title: "Get a motion video",
     view: {
       csp: viewCsp,
@@ -381,6 +426,7 @@ export const listCategories = server.tool(
         })
       ),
     }),
+    securitySchemes: [{ type: "noauth" }],
     title: "List catalog categories",
   },
   async () => {
@@ -426,6 +472,7 @@ export const browseDirectory = server.tool(
       shown: z.number().int(),
       total: z.number().int(),
     }),
+    securitySchemes: [{ type: "noauth" }],
     title: "Browse tools and studios",
   },
   async ({ section, query, category, limit }) => {
@@ -459,6 +506,357 @@ export const browseDirectory = server.tool(
         shown: entries.length,
         total,
       },
+    };
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Pro tools (OAuth + plan)
+// ---------------------------------------------------------------------------
+
+// The Moves library's copy-ready prompts are MotionVideo Pro. These tools sign
+// the user in with their motionvideo.xyz account and forward the verified
+// access token to the site, which checks for an active Pro or Business plan
+// (or a Business seat) on that account.
+
+const proError = (text: string) => ({
+  content: [{ text, type: "text" as const }],
+  isError: true as const,
+});
+
+const moveSummarySchema = z.object({
+  aka: z.array(z.string()).describe("Other names for the move"),
+  family: z.enum(MOVE_FAMILIES),
+  goodFor: z.array(z.string()).describe("What the move works well for"),
+  name: z.string(),
+  pageUrl: z.string().describe("The move's page on motionvideo.xyz"),
+  slug: z.string().describe("Stable move id for get-move-prompt"),
+  summary: z.string().describe("One sentence: what the move looks like"),
+});
+
+export const searchMoves = server.tool(
+  {
+    annotations: readOnly,
+    description:
+      "MotionVideo Pro: search the motionvideo.xyz Moves library of named motion techniques (easing, kinetic type, transitions, UI motion, camera moves, and more) by keyword and/or family. Returns names, families, summaries, and slugs for get-move-prompt. Signs in with the user's motionvideo.xyz account (the client offers that on first use) and needs a MotionVideo Pro or Business plan on it.",
+    inputSchema: z.object({
+      family: z
+        .enum(MOVE_FAMILIES)
+        .optional()
+        .describe("Only moves in one family"),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(MOVES_MAX_LIMIT)
+        .optional()
+        .describe(`Max moves to return (1-${MOVES_MAX_LIMIT}). Defaults to 12`),
+      query: z
+        .string()
+        .optional()
+        .describe(
+          "Text matched case-insensitively against the move's name, other names, summary, and good-for tags"
+        ),
+    }),
+    name: "search-moves",
+    outputSchema: z.object({
+      moves: z.array(moveSummarySchema),
+      shown: z.number().int(),
+      total: z.number().int().describe("Total matches before the limit"),
+    }),
+    securitySchemes: [{ scopes: [], type: "oauth2" }],
+    title: "Search motion moves (Pro)",
+  },
+  async ({ query, family, limit }, ctx) => {
+    const result = await loadProMoves({
+      accessToken: ctx.auth.accessToken,
+      userId: ctx.auth.user.id,
+    });
+    if ("error" in result) {
+      return proError(result.error);
+    }
+
+    const { total, moves } = searchProMoves(result.data, {
+      family,
+      limit,
+      query,
+    });
+    const summaries = moves.map((move) => ({
+      aka: move.aka,
+      family: move.family,
+      goodFor: move.goodFor,
+      name: move.name,
+      pageUrl: movePageUrl(move),
+      slug: move.slug,
+      summary: move.summary,
+    }));
+
+    const filters = [
+      query ? `matching "${query}"` : undefined,
+      family ? `in ${family}` : undefined,
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const lines = summaries.map(
+      (move) =>
+        `- ${move.name} [${move.family}] (${move.slug}) — ${move.summary}`
+    );
+
+    return {
+      content: [
+        {
+          text: [
+            `Found ${total} move${total === 1 ? "" : "s"}${filters ? ` ${filters}` : ""}. Showing ${summaries.length}.`,
+            "",
+            ...lines,
+            "",
+            "Call get-move-prompt with a slug for its copy-ready prompt.",
+          ].join("\n"),
+          type: "text" as const,
+        },
+      ],
+      structuredContent: { moves: summaries, shown: summaries.length, total },
+    };
+  }
+);
+
+export const getMovePrompt = server.tool(
+  {
+    annotations: readOnly,
+    description:
+      "MotionVideo Pro: fetch the copy-ready prompt for one move from the motionvideo.xyz Moves library, with its tunable parameters and page URL. Signs in with the user's motionvideo.xyz account (the client offers that on first use) and needs a MotionVideo Pro or Business plan on it.",
+    inputSchema: z.object({
+      slug: z
+        .string()
+        .describe("Move slug from search-moves, e.g. squash-and-stretch"),
+    }),
+    name: "get-move-prompt",
+    outputSchema: z.object({
+      family: z.enum(MOVE_FAMILIES),
+      name: z.string(),
+      pageUrl: z.string().describe("The move's page on motionvideo.xyz"),
+      parameters: z
+        .array(z.string())
+        .describe("Values worth tuning, with their working ranges"),
+      prompt: z.string().describe("Copy-ready prompt; fill in the brackets"),
+      slug: z.string(),
+      summary: z.string(),
+    }),
+    securitySchemes: [{ scopes: [], type: "oauth2" }],
+    title: "Get a move prompt (Pro)",
+  },
+  async ({ slug }, ctx) => {
+    const result = await loadProMove(ctx.auth.accessToken, slug);
+    if ("error" in result) {
+      return proError(result.error);
+    }
+    const move = result.data;
+    if (!move) {
+      return proError(
+        `No move with slug "${slug}". Use search-moves to find one.`
+      );
+    }
+
+    const pageUrl = movePageUrl(move);
+    return {
+      content: [
+        {
+          text: [
+            `${move.name} [${move.family}] — ${pageUrl}`,
+            move.summary,
+            "",
+            "Prompt:",
+            move.prompt,
+            "",
+            "Parameters:",
+            ...move.parameters.map((parameter) => `- ${parameter}`),
+          ].join("\n"),
+          type: "text" as const,
+        },
+      ],
+      structuredContent: {
+        family: move.family,
+        name: move.name,
+        pageUrl,
+        parameters: move.parameters,
+        prompt: move.prompt,
+        slug: move.slug,
+        summary: move.summary,
+      },
+    };
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Account tools (OAuth)
+// ---------------------------------------------------------------------------
+
+// Signed-in tools call the site's `/api/mcp/*` endpoints with the access
+// token Better Auth issued for this server; it holds no account secrets.
+
+const bookmarkKinds = ["video", "tool", "studio", "skill", "extra"] as const;
+
+const bookmarkSchema = z.object({
+  category: z
+    .string()
+    .optional()
+    .describe("Directory category: tools, studios, skills, or resources"),
+  creator: z.string().optional().describe("Video creator handle (videos only)"),
+  description: z.string().optional(),
+  id: z.string().describe("Catalog item id (video slug or directory entry id)"),
+  kind: z.enum(bookmarkKinds),
+  title: z.string(),
+  url: z.string().describe("Page to open for the item"),
+});
+
+const featuredSubmissionSchema = z.object({
+  description: z.string(),
+  featuredItemId: z
+    .string()
+    .optional()
+    .describe("Catalog item the submission became"),
+  featuredUrl: z
+    .string()
+    .optional()
+    .describe("Catalog page of the featured entry"),
+  kind: z.enum(bookmarkKinds),
+  status: z.literal("featured"),
+  submittedAt: z.string().describe("ISO 8601 date the submission was filed"),
+  title: z.string(),
+  url: z.string().describe("The submitted URL"),
+});
+
+// A reachable-but-rejecting response means the session went stale, not that
+// the catalog is down, so it gets its own message.
+const fetchAccountApi = async <T>(
+  path: string,
+  accessToken: string
+): Promise<{ data: T } | { error: string }> => {
+  let response: Response;
+  try {
+    response = await fetch(`${SITE_URL}${path}`, {
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+  } catch {
+    return {
+      error: `${SITE_URL} could not be reached; try again in a moment.`,
+    };
+  }
+  if (!response.ok) {
+    return {
+      error: `motionvideo.xyz rejected the request (HTTP ${response.status}). If this keeps happening, sign out and back in from the MCP client to refresh the session.`,
+    };
+  }
+  return {
+    // SAFETY: the site's /api/mcp/* endpoints return the shapes this file's
+    // output schemas mirror, and `data` is only read through those schemas.
+    data: (await response.json()) as T,
+  };
+};
+
+export const listBookmarks = server.tool(
+  {
+    annotations: readOnly,
+    description:
+      "List the signed-in user's motionvideo.xyz bookmarks: saved motion videos, tools, studios, skills, and resources, newest first. Signs in with the user's MotionVideo account; the client offers that on first use.",
+    inputSchema: z.object({
+      kind: z
+        .enum(bookmarkKinds)
+        .optional()
+        .describe("Return only bookmarks of one kind"),
+    }),
+    name: "list-bookmarks",
+    outputSchema: z.object({ bookmarks: z.array(bookmarkSchema) }),
+    securitySchemes: [{ scopes: [], type: "oauth2" }],
+    title: "List my bookmarks",
+  },
+  async ({ kind }, ctx) => {
+    const result = await fetchAccountApi<{
+      bookmarks: z.infer<typeof bookmarkSchema>[];
+    }>("/api/mcp/bookmarks", ctx.auth.accessToken);
+    if ("error" in result) {
+      return {
+        content: [
+          {
+            text: `Could not load bookmarks: ${result.error}`,
+            type: "text" as const,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const bookmarks = kind
+      ? result.data.bookmarks.filter((bookmark) => bookmark.kind === kind)
+      : result.data.bookmarks;
+    const lines = bookmarks.map(
+      (bookmark) =>
+        `- [${bookmark.kind}] ${bookmark.title}${bookmark.creator ? ` by ${bookmark.creator}` : ""} — ${bookmark.url}`
+    );
+    const text =
+      bookmarks.length > 0
+        ? [
+            `${bookmarks.length} bookmark${bookmarks.length === 1 ? "" : "s"}${kind ? ` (${kind})` : ""}, newest first:`,
+            "",
+            ...lines,
+            "",
+            "Call get-video with a video's id to read its prompt.",
+          ].join("\n")
+        : `No ${kind ? `${kind} ` : ""}bookmarks yet. On motionvideo.xyz the bookmark button on any video or directory entry saves it here.`;
+
+    return {
+      content: [{ text, type: "text" as const }],
+      structuredContent: { bookmarks },
+    };
+  }
+);
+
+export const myFeatured = server.tool(
+  {
+    annotations: readOnly,
+    description:
+      "List the signed-in user's motionvideo.xyz community submissions that were featured in the catalog, newest first, with links to the featured entries. Signs in with the user's MotionVideo account; the client offers that on first use.",
+    inputSchema: z.object({}),
+    name: "my-featured",
+    outputSchema: z.object({
+      submissions: z.array(featuredSubmissionSchema),
+    }),
+    securitySchemes: [{ scopes: [], type: "oauth2" }],
+    title: "My featured submissions",
+  },
+  async (_input, ctx) => {
+    const result = await fetchAccountApi<{
+      submissions: z.infer<typeof featuredSubmissionSchema>[];
+    }>("/api/mcp/featured", ctx.auth.accessToken);
+    if ("error" in result) {
+      return {
+        content: [
+          {
+            text: `Could not load featured submissions: ${result.error}`,
+            type: "text" as const,
+          },
+        ],
+        isError: true,
+      };
+    }
+
+    const { submissions } = result.data;
+    const lines = submissions.map(
+      (submission) =>
+        `- [${submission.kind}] ${submission.title} — ${submission.featuredUrl ?? submission.url} (submitted ${submission.submittedAt.slice(0, 10)})`
+    );
+    const text =
+      submissions.length > 0
+        ? [
+            `${submissions.length} featured submission${submissions.length === 1 ? "" : "s"}, newest first:`,
+            "",
+            ...lines,
+          ].join("\n")
+        : "None of the user's submissions have been featured yet. They can submit work at https://motionvideo.xyz/dashboard/submit.";
+
+    return {
+      content: [{ text, type: "text" as const }],
+      structuredContent: { submissions },
     };
   }
 );

@@ -1,12 +1,38 @@
-// Keeps the plugin package's embedded copies of the skill and the icon in sync
-// with their canonical sources, so `plugins/motionvideo/` always matches what
-// the MCP server and the site ship. Run with `pnpm plugin:sync`; lefthook runs
-// it before commits that touch either source.
+// Refreshes bundled source copies and aligns host manifest versions with
+// package.json. This updates repository artifacts only; deploying the MCP server
+// and publishing host bundles are separate release steps.
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const root = path.resolve(import.meta.dirname, "..");
+
+const { version } = JSON.parse(
+  await readFile(path.resolve(root, "package.json"), "utf-8")
+);
+const manifests = [
+  "plugins/motionvideo/plugin.json",
+  "plugins/motionvideo/.claude-plugin/plugin.json",
+  "gemini-extension.json",
+  "kimi.plugin.json",
+  "plugins/antigravity/plugin.json",
+];
+
+// Finish canonical manifests before copying kimi.plugin.json into the bundle.
+const versionResults = await Promise.all(
+  manifests.map(async (file) => {
+    const target = path.resolve(root, file);
+    const current = await readFile(target, "utf-8");
+    const manifest = JSON.parse(current);
+    if (manifest.version === version) {
+      return `up to date  ${file}`;
+    }
+
+    manifest.version = version;
+    await writeFile(target, `${JSON.stringify(manifest, null, 2)}\n`);
+    return `synced      ${file}`;
+  })
+);
 
 const copies = [
   [
@@ -43,11 +69,14 @@ const results = await Promise.all(
   })
 );
 
-for (const line of results) {
+const allResults = [...versionResults, ...results];
+for (const line of allResults) {
   console.log(line);
 }
 
-const changed = results.filter((result) => result.startsWith("synced")).length;
+const changed = allResults.filter((result) =>
+  result.startsWith("synced")
+).length;
 console.log(
   changed === 0 ? "Plugin copies are in sync." : `Synced ${changed} file(s).`
 );

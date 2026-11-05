@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "motionvideo",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "description": "Search the motionvideo.xyz catalog of AI-made motion videos, pull the original prompts behind them, and browse the motion tools and studios around them.",
   "author": {
     "name": "MotionVideo",
@@ -24,7 +24,7 @@
       "interface": {
         "displayName": "MotionVideo",
         "shortDescription": "Motion design references",
-        "longDescription": "MotionVideo puts the motionvideo.xyz catalog of AI-made motion videos inside ChatGPT and Codex. Search references by keyword or content category, pull the original prompt behind any entry along with the model and settings its creator used, browse the motion tools and studios in the directory, and adapt the prompts into your own motion work. Every tool is read-only and works without sign-in. Results credit the original creators and link to the source page. Useful for motion designers, brand teams, and anyone who wants a video like this before writing a single prompt.",
+        "longDescription": "MotionVideo puts the motionvideo.xyz catalog of AI-made motion videos inside ChatGPT and Codex. Search references by keyword or content category, pull the original prompt behind any entry along with the model and settings its creator used, browse the motion tools and studios in the directory, and adapt the prompts into your own motion work. Every tool is read-only, and the catalog tools work without sign-in. Results credit the original creators and link to the source page. Useful for motion designers, brand teams, and anyone who wants a video like this before writing a single prompt.",
         "developerName": "MotionVideo",
         "category": "Productivity",
         "capabilities": [
@@ -105,7 +105,7 @@
         "commerce_description": "The plugin searches a public, read-only catalog. It sells nothing and processes no payments."
       },
       "publication": {
-        "release_notes": "Initial release: search motion video references, read the original prompts behind them, and browse the motion tools and studios directory."
+        "release_notes": "1.1.1: remove the portable No Auth override so clients manage OAuth discovery for protected capabilities, add Claude privacy metadata, and synchronize portable/native manifest versions. Public catalog tools remain anonymous; account resources/prompts/tools require sign-in, and Moves tools additionally require a qualifying plan. Remote server deployment is a separate release step."
       }
     }
   }

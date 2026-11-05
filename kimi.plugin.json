@@ -1,6 +1,6 @@
 {
   "name": "motionvideo",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "description": "Search the motionvideo.xyz catalog of AI-made motion videos, pull the original prompts behind them, and browse the motion tools and studios around them.",
   "keywords": ["motion design", "video", "AI", "prompts", "references"],
   "author": "MotionVideo",
@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "MotionVideo",
     "shortDescription": "Motion design references with the prompts behind them",
-    "longDescription": "MotionVideo puts the motionvideo.xyz catalog of AI-made motion videos inside Kimi Code. Find references by keyword or content category, pull the original prompt behind any entry along with the model and settings its creator used, browse the motion tools and studios in the directory, and adapt the prompts into your own motion work. Read-only, no sign-in.",
+    "longDescription": "MotionVideo puts the motionvideo.xyz catalog of AI-made motion videos inside Kimi Code. Find references by keyword or content category, pull the original prompt behind any entry along with the model and settings its creator used, browse the motion tools and studios in the directory, and adapt the prompts into your own motion work. Read-only; the catalog tools need no sign-in.",
     "developerName": "MotionVideo",
     "websiteURL": "https://motionvideo.xyz"
   },

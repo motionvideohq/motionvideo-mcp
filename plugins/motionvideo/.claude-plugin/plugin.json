@@ -1,13 +1,14 @@
 {
   "name": "motionvideo",
   "displayName": "MotionVideo",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "description": "Search the motionvideo.xyz catalog of AI-made motion videos, read the original prompts behind them, and browse motion tools and studios — then adapt the prompts into new motion design work.",
   "author": {
     "name": "MotionVideo",
     "url": "https://motionvideo.xyz"
   },
   "homepage": "https://motionvideo.xyz",
+  "privacyPolicyUrl": "https://motionvideo.xyz/privacy",
   "repository": "https://github.com/motionvideohq/motionvideo-mcp",
   "license": "MIT",
   "keywords": ["motion design", "video", "AI", "prompts", "inspiration"]
