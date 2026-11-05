@@ -70,6 +70,10 @@ pnpm deploy      # deploy to Manufact Cloud (linked on first run)
 
 Building, syncing plugin bundles, and deploying the remote server are separate steps. After deployment, check `initialize` reports the intended version, all eight tools are listed, public directory/category calls return, protected calls challenge anonymous requests, and `/.well-known/oauth-protected-resource/mcp` serves the expected audience and authorization server. Publish updated client bundles only after checking that remote cutover.
 
+### Release 1.1.2
+
+Both video views now request the MCP Apps `clipboardWrite` sandbox permission so hosts can delegate access for the Copy action. Browser verification reproduced a denied clipboard write without the declaration, then checked exact prompt copies in both views after the host applied it. Clipboard-read access is not requested; hosts may still refuse clipboard access.
+
 ### Release 1.1.1
 
 Removes the portable bundle's forced-disabled authentication setting, adds Claude directory privacy metadata, and aligns the portable, Claude, Gemini, Kimi, and Antigravity manifest versions with the package version via `plugin:sync`.

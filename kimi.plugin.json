@@ -1,6 +1,6 @@
 {
   "name": "motionvideo",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Search the motionvideo.xyz catalog of AI-made motion videos, pull the original prompts behind them, and browse the motion tools and studios around them.",
   "keywords": ["motion design", "video", "AI", "prompts", "references"],
   "author": "MotionVideo",

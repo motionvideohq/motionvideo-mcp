@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "motionvideo",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Search the motionvideo.xyz catalog of AI-made motion videos, pull the original prompts behind them, and browse the motion tools and studios around them.",
   "author": {
     "name": "MotionVideo",

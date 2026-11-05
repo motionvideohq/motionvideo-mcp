@@ -78,7 +78,7 @@ const server = new MCPServer<BetterAuthOAuthUser>({
     ],
   }),
   title: "MotionVideo",
-  version: "1.1.1",
+  version: "1.1.2",
   websiteUrl: "https://motionvideo.xyz",
 });
 
@@ -299,6 +299,7 @@ export const searchVideos = server.tool(
       description:
         "Interactive gallery of matching motion videos with inline player and the prompt behind each entry",
       name: "video-gallery",
+      permissions: { clipboardWrite: {} },
       prefersBorder: false,
     },
   },
@@ -357,6 +358,7 @@ export const getVideo = server.tool(
       description:
         "Player for one motion video with its original prompt, metadata, and remix actions",
       name: "video-detail",
+      permissions: { clipboardWrite: {} },
       prefersBorder: false,
     },
   },
