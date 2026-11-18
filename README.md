@@ -16,9 +16,9 @@ Server URL: `https://mcp.motionvideo.xyz/mcp` (Streamable HTTP). Catalog tools n
 
 Leave OAuth discovery on. Choosing "No auth" or "No sign-in" in a client hides the account and Pro tools; the catalog tools keep working either way.
 
-`search-videos` and `get-video` render as MCP Apps views in clients that support them (Claude, ChatGPT and other MCP Apps hosts), and return the same data as text and JSON everywhere else.
+## Interactive views
 
-`search-videos` and `get-video` render as [MCP Apps](https://modelcontextprotocol.io/docs/extensions/apps) views in clients that support them (Claude, ChatGPT and other MCP Apps hosts), and return the same data as text and JSON everywhere else.
+`search-videos` and `get-video` render as MCP Apps views in clients that support them (Claude, ChatGPT and other MCP Apps hosts), and return the same data as text and JSON everywhere else.
 
 | Tool | View |
 | --- | --- |
@@ -36,8 +36,8 @@ claude mcp add --transport http motionvideo https://mcp.motionvideo.xyz/mcp
 Or install the plugin, which adds the [`motionvideo` skill](skills/motionvideo/SKILL.md) too:
 
 ```bash
+claude plugin marketplace add motionvideohq/motionvideo-mcp
 claude plugin install motionvideo@motionvideo
-claude plugin install motionvideo
 ```
 
 Run `/mcp` in a session to sign in when you want the account or Pro tools.
