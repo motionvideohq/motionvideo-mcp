@@ -29,6 +29,8 @@ import {
   MOVES_MAX_LIMIT,
   movePageUrl,
   searchMoves as searchProMoves,
+  SIGN_IN_INVALID_MESSAGE,
+  siteFailedMessage,
 } from "./src/pro.js";
 
 // Public site that serves the catalog and hosts the MotionVideo account
@@ -728,8 +730,8 @@ const featuredSubmissionSchema = z.object({
   url: z.string().describe("The submitted URL"),
 });
 
-// A reachable-but-rejecting response means the session went stale, not that
-// the catalog is down, so it gets its own message.
+// Only a 401 means the sign-in went stale; any other failure is the site's,
+// and telling the user to sign in again would send them on a detour.
 const fetchAccountApi = async <T>(
   path: string,
   accessToken: string
@@ -746,7 +748,10 @@ const fetchAccountApi = async <T>(
   }
   if (!response.ok) {
     return {
-      error: `motionvideo.xyz rejected the request (HTTP ${response.status}). If this keeps happening, sign out and back in from the MCP client to refresh the session.`,
+      error:
+        response.status === 401
+          ? SIGN_IN_INVALID_MESSAGE
+          : siteFailedMessage(response.status),
     };
   }
   return {

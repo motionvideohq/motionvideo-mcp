@@ -56,8 +56,12 @@ export const movePageUrl = (move: Pick<ProMove, "family" | "slug">): string =>
 
 const NO_PLAN_MESSAGE = `This is a MotionVideo Pro tool, and the signed-in motionvideo.xyz account has no MotionVideo Pro or Business plan (Business seat holders are included). Get one at ${PRO_URL}, then try again.`;
 
-const SIGN_IN_INVALID_MESSAGE =
+export const SIGN_IN_INVALID_MESSAGE =
   "motionvideo.xyz did not accept this sign-in: it has expired or is no longer valid. Sign out and back in from the MCP client to reconnect your motionvideo.xyz account, then try again.";
+
+/** Any other failed status: the site's fault, so signing in again won't help. */
+export const siteFailedMessage = (status: number) =>
+  `motionvideo.xyz failed to answer (HTTP ${status}); this is not a sign-in problem, so try again later.`;
 
 /** The signed-in caller, from the verified OAuth access token. */
 export interface ProCaller {
@@ -112,7 +116,7 @@ const errorFor = async (response: Response): Promise<string> => {
   if (response.status === 503) {
     return "motionvideo.xyz couldn't check your plan right now; try again in a moment.";
   }
-  return `motionvideo.xyz rejected the request (HTTP ${response.status}); try again in a moment.`;
+  return siteFailedMessage(response.status);
 };
 
 const fetchPro = async (
