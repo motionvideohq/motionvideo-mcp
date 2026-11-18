@@ -232,6 +232,35 @@ const SkeletonGrid = () => (
   </div>
 );
 
+interface SearchFilters {
+  query?: string;
+  models?: string[];
+  categories?: string[];
+  colors?: string[];
+  colorMatch?: "any" | "all";
+  creators?: string[];
+  type?: string;
+}
+
+/** The search's filters in words, for the model context. */
+const describeFilters = (input: SearchFilters | undefined): string =>
+  [
+    input?.query ? `query "${input.query}"` : undefined,
+    input?.models?.length ? `model ${input.models.join(" or ")}` : undefined,
+    input?.categories?.length
+      ? `category ${input.categories.join(" or ")}`
+      : undefined,
+    input?.colors?.length
+      ? `colour ${input.colors.join(input.colorMatch === "all" ? " and " : " or ")}`
+      : undefined,
+    input?.creators?.length
+      ? `creator ${input.creators.join(" or ")}`
+      : undefined,
+    input?.type ? `type ${input.type}` : undefined,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
 const VideoGallery = () => {
   const view = useToolContext<"search-videos">();
   const [openSlug, setOpenSlug] = useState<string | null>(null);
@@ -414,7 +443,7 @@ const VideoGallery = () => {
         </div>
         {videos.length === 0 ? (
           <p className="m-0 px-1 pb-2 text-sm text-zinc-500 dark:text-zinc-400">
-            Nothing matched. Try broader keywords or a different category.
+            Nothing matched every filter. Try fewer filters or broader keywords.
           </p>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -436,15 +465,7 @@ const VideoGallery = () => {
       return "Loading motion video search results.";
     }
     const { total, shown } = view.toolOutput;
-    const filters = [
-      view.toolInput?.query ? `query "${view.toolInput.query}"` : undefined,
-      view.toolInput?.category
-        ? `category ${view.toolInput.category}`
-        : undefined,
-      view.toolInput?.type ? `type ${view.toolInput.type}` : undefined,
-    ]
-      .filter(Boolean)
-      .join(", ");
+    const filters = describeFilters(view.toolInput);
     const selection = activeDetail
       ? ` Open video: "${activeDetail.title}" by @${activeDetail.handle} (slug ${activeDetail.slug})${activeDetail.prompt ? " with its original prompt visible" : ""}.`
       : "";

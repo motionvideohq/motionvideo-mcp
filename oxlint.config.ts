@@ -10,6 +10,8 @@ export default defineConfig({
     // mcp-use build output and generated env types are never hand-edited.
     ".mcp-use/**",
     "mcp-env.d.ts",
+    // Generated from the site's OpenAPI document (pnpm api:generate).
+    "src/generated/**",
     // Skill copies installed per agent (see skills-lock.json); vendored verbatim.
     ".agents/**",
     ".claude/**",

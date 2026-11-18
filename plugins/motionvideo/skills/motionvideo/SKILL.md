@@ -7,13 +7,13 @@ description: Find reference motion videos on motionvideo.xyz and remix the origi
 
 Use this when the user wants motion design inspiration, "a video like this", or wants to adapt an existing motion video prompt.
 
-1. `search-videos` with keywords and/or a content category to find references. `list-categories` explains the catalog categories.
+1. `search-videos` to find references: keywords plus any of `categories`, `models` (e.g. "Opus 5.5"; a bare "5.5" covers every 5.5 model; "Gemini" covers the family), `colors` (red, orange, …), `creators`, and `type`. Several values in one filter mean "any of them"; different filters all apply, so "Opus 5.5 videos in red or orange" is `models: ["Opus 5.5"], colors: ["red", "orange"]`. Page with `offset`. `list-filters` lists every category, model and colour with counts.
 2. `get-video` with the chosen slug to read the original prompt, the model and effort behind it, and links to the preview, full video, and post.
 3. Adapt the prompt to the user's brief: keep the choreography, timing structure, and constraints that work; swap in the user's brand, copy, palette, aspect ratio, and audio.
 4. Build the video yourself in the user's stack (HTML/JS with styles computed inside `seek(t)`, Remotion, or their editor of choice). Ask before defaulting on brand-critical choices.
 5. Credit the source: link the video's page (`pageUrl`) when you share results.
 
-`browse-directory` lists motion tools (AI generators, editors, resources) and studios when the user needs production help.
+`search-directory` finds production help in one section: `tools` (filter by pricing), `skills` (agent skills that make videos; filter by renderer such as remotion, sort by stars), `creatives` (studios and designers for hire; filter by specialty such as product-films), or `extras` (articles and resources).
 
 ## Moves (MotionVideo Pro)
 

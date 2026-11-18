@@ -74,16 +74,16 @@
               "expected_behavior": "Returns the entry's original prompt, model and effort metadata, media links, and the source page URL to credit."
             },
             {
-              "description": "Explain the catalog categories",
+              "description": "Explain the catalog filters",
               "prompt": "What kinds of motion content are in the MotionVideo catalog?",
-              "tools_triggered": "list-categories",
-              "expected_behavior": "Lists every catalog category with video counts and a short description."
+              "tools_triggered": "list-filters",
+              "expected_behavior": "Lists every catalog category with video counts and a short description, plus the models and colours to filter by."
             },
             {
               "description": "Find production help",
               "prompt": "Which motion studios can I hire to produce a product launch video?",
-              "tools_triggered": "browse-directory",
-              "expected_behavior": "Returns studio entries from the studios directory with descriptions and links."
+              "tools_triggered": "search-directory",
+              "expected_behavior": "Returns creatives (studios and designers) who specialise in product films, with descriptions and links."
             }
           ],
           "negative": [

@@ -2,37 +2,21 @@
 //
 // Pro tools need the user signed in with their motionvideo.xyz account
 // (OAuth 2.1, `account` scope) and an active MotionVideo Pro or Business plan
-// on it, or a Business seat. This module forwards the verified access token
-// unchanged to the site's `/api/mcp/moves` endpoints as
-// `Authorization: Bearer <token>`; the site checks the plan and serves the
-// copy-ready prompts. Keep the field names in sync with
-// motionvideo.xyz/src/lib/moves.ts and the site's `/api/mcp/moves` routes.
+// on it, or a Business seat. This module reads the site's `/api/mcp/moves`
+// endpoints through `fetchSiteApi`, which forwards the verified access token;
+// the site checks the plan and serves the copy-ready prompts. Keep the field
+// names in sync with motionvideo.xyz/src/lib/moves.ts and the site's
+// `/api/mcp/moves` routes.
 
 import { z } from "zod";
 
-import { SITE_URL } from "./catalog.js";
-
-const PRO_URL = "https://motionvideo.xyz/pro";
+import { MOVE_FAMILIES, SITE_URL } from "./catalog.js";
+import { fetchSiteApi } from "./site-api.js";
 
 const MOVES_PATH = "/api/mcp/moves";
 
 /** A successful list response is served this long per user before refetching. */
 const CACHE_TTL_MS = 10 * 60 * 1000;
-/** Abandon a single fetch after this long. */
-const FETCH_TIMEOUT_MS = 10 * 1000;
-
-export const MOVE_FAMILIES = [
-  "timing",
-  "type",
-  "transitions",
-  "ui",
-  "vector",
-  "generative",
-  "camera",
-  "texture",
-  "data",
-  "sound",
-] as const;
 
 export const proMoveSchema = z.object({
   aka: z.array(z.string()),
@@ -54,25 +38,17 @@ const moveResponseSchema = z.object({ move: proMoveSchema });
 export const movePageUrl = (move: Pick<ProMove, "family" | "slug">): string =>
   `https://motionvideo.xyz/moves/${move.family}/${move.slug}`;
 
-const NO_PLAN_MESSAGE = `This is a MotionVideo Pro tool, and the signed-in motionvideo.xyz account has no MotionVideo Pro or Business plan (Business seat holders are included). Get one at ${PRO_URL}, then try again.`;
-
-export const SIGN_IN_INVALID_MESSAGE =
-  "motionvideo.xyz did not accept this sign-in: it has expired or is no longer valid. Sign out and back in from the MCP client to reconnect your motionvideo.xyz account, then try again.";
-
-/** Any other failed status: the site's fault, so signing in again won't help. */
-export const siteFailedMessage = (status: number) =>
-  `motionvideo.xyz failed to answer (HTTP ${status}); this is not a sign-in problem, so try again later.`;
-
 /** The signed-in caller, from the verified OAuth access token. */
 export interface ProCaller {
   /** Access token the MCP server verified; forwarded to the site unchanged. */
   accessToken: string;
+  /** Aborted when the MCP client cancels the call or disconnects. */
+  signal: AbortSignal;
   /** Better Auth user id; keys the moves cache. */
   userId: string;
 }
 
 export type ProResult<T> = { data: T } | { error: string };
-
 interface CacheEntry {
   expiresAt: number;
   moves: ProMove[];
@@ -89,67 +65,10 @@ const pruneCache = (now: number) => {
   }
 };
 
-const errorBodySchema = z.object({ error: z.string() });
-
-/** The `error` code of a JSON error body, if the site sent one. */
-const readErrorCode = async (
-  response: Response
-): Promise<string | undefined> => {
-  try {
-    const body = errorBodySchema.safeParse(await response.json());
-    return body.success ? body.data.error : undefined;
-  } catch {
-    return undefined;
-  }
-};
-
-const errorFor = async (response: Response): Promise<string> => {
-  if (response.status === 401) {
-    return SIGN_IN_INVALID_MESSAGE;
-  }
-  if (
-    response.status === 403 &&
-    (await readErrorCode(response)) === "no_plan"
-  ) {
-    return NO_PLAN_MESSAGE;
-  }
-  if (response.status === 503) {
-    return "motionvideo.xyz couldn't check your plan right now; try again in a moment.";
-  }
-  return siteFailedMessage(response.status);
-};
-
-const fetchPro = async (
-  path: string,
-  accessToken: string
-): Promise<{ body: unknown } | { error: string; status?: number }> => {
-  let response: Response;
-  try {
-    response = await fetch(`${SITE_URL}${path}`, {
-      headers: {
-        accept: "application/json",
-        authorization: `Bearer ${accessToken}`,
-      },
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    });
-  } catch {
-    return {
-      error: `${SITE_URL} could not be reached; try again in a moment.`,
-    };
-  }
-  if (!response.ok) {
-    return { error: await errorFor(response), status: response.status };
-  }
-  try {
-    return { body: await response.json() };
-  } catch {
-    return { error: `${SITE_URL} returned an unreadable response.` };
-  }
-};
-
 /** Every move with its prompt, cached per user for 10 minutes. */
 export const loadProMoves = async ({
   accessToken,
+  signal,
   userId,
 }: ProCaller): Promise<ProResult<ProMove[]>> => {
   const now = Date.now();
@@ -158,7 +77,7 @@ export const loadProMoves = async ({
     return { data: cached.moves };
   }
 
-  const result = await fetchPro(MOVES_PATH, accessToken);
+  const result = await fetchSiteApi(MOVES_PATH, { accessToken, signal });
   if ("error" in result) {
     return { error: result.error };
   }
@@ -177,12 +96,12 @@ export const loadProMoves = async ({
 
 /** One move with its prompt; `undefined` data for an unknown slug. */
 export const loadProMove = async (
-  accessToken: string,
+  { accessToken, signal }: Omit<ProCaller, "userId">,
   slug: string
 ): Promise<ProResult<ProMove | undefined>> => {
-  const result = await fetchPro(
+  const result = await fetchSiteApi(
     `${MOVES_PATH}/${encodeURIComponent(slug)}`,
-    accessToken
+    { accessToken, signal }
   );
   if ("error" in result) {
     return result.status === 404

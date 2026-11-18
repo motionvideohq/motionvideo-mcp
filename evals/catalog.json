@@ -1,0 +1,207 @@
+{
+  "$comment": "Real requests and the tool call an agent should make for each. Run with `pnpm eval` (see scripts/eval.mjs). Matchers: equals, set (same values, any order), includes (contains every value), match (case-insensitive regex; on arrays, some element), absentOr (absent or equal).",
+  "scenarios": [
+    {
+      "id": "model-and-colors-any",
+      "prompt": "Find me Opus 5.5 motion videos with red or orange colours.",
+      "tool": "search-videos",
+      "args": {
+        "models": { "match": "opus 5\\.5" },
+        "colors": { "set": ["red", "orange"] },
+        "colorMatch": { "absentOr": "any" }
+      }
+    },
+    {
+      "id": "bare-version-and-category",
+      "prompt": "Show me 5.5 videos in the product UI category.",
+      "tool": "search-videos",
+      "args": {
+        "models": { "match": "5\\.5" },
+        "categories": { "set": ["product-ui"] }
+      }
+    },
+    {
+      "id": "colors-all",
+      "prompt": "I want videos whose palette has both red and orange in it.",
+      "tool": "search-videos",
+      "args": {
+        "colors": { "set": ["red", "orange"] },
+        "colorMatch": { "equals": "all" }
+      }
+    },
+    {
+      "id": "creator-handle",
+      "prompt": "What has @twoclipping made?",
+      "tool": "search-videos",
+      "args": { "creators": { "match": "twoclipping" } }
+    },
+    {
+      "id": "creator-display-name",
+      "prompt": "Show me the videos by Stephan Livera.",
+      "tool": "search-videos",
+      "args": { "creators": { "match": "stephan ?livera" } }
+    },
+    {
+      "id": "model-family-and-category",
+      "prompt": "Any Gemini-made videos about charts?",
+      "tool": "search-videos",
+      "args": {
+        "models": { "match": "gemini" },
+        "categories": { "includes": ["charts"] }
+      }
+    },
+    {
+      "id": "category-type-sort",
+      "prompt": "Oldest kinetic typography videos that come with a skill.",
+      "tool": "search-videos",
+      "args": {
+        "categories": { "set": ["kinetic-type"] },
+        "type": { "equals": "skill" },
+        "sort": { "equals": "oldest" }
+      }
+    },
+    {
+      "id": "color-and-category",
+      "prompt": "Find blue particle effect videos.",
+      "tool": "search-videos",
+      "args": {
+        "colors": { "set": ["blue"] },
+        "categories": { "includes": ["particles"] }
+      }
+    },
+    {
+      "id": "limit",
+      "prompt": "Give me 30 phone app motion videos.",
+      "tool": "search-videos",
+      "args": {
+        "categories": { "set": ["phone"] },
+        "limit": { "equals": 30 }
+      }
+    },
+    {
+      "id": "model-and-black",
+      "prompt": "GPT-6 Astra videos with a black background colour.",
+      "tool": "search-videos",
+      "args": {
+        "models": { "match": "gpt-6 astra" },
+        "colors": { "includes": ["black"] }
+      }
+    },
+    {
+      "id": "three-facets",
+      "prompt": "Claude Opus 5.5 music videos with pink in them.",
+      "tool": "search-videos",
+      "args": {
+        "models": { "match": "opus 5\\.5" },
+        "categories": { "includes": ["music"] },
+        "colors": { "set": ["pink"] }
+      }
+    },
+    {
+      "id": "categories-any-and-model",
+      "prompt": "Charts or diagrams videos made with Fable 5.2.",
+      "tool": "search-videos",
+      "args": {
+        "categories": { "set": ["charts", "diagrams"] },
+        "models": { "match": "fable 5\\.2" }
+      }
+    },
+    {
+      "id": "get-video",
+      "prompt": "Get me the original prompt behind twoclipping-56402e.",
+      "tool": "get-video",
+      "args": { "slug": { "equals": "twoclipping-56402e" } }
+    },
+    {
+      "id": "skills-renderer-stars",
+      "prompt": "Which Remotion skills are the most starred on GitHub?",
+      "tool": "search-directory",
+      "args": {
+        "section": { "equals": "skills" },
+        "filters": { "includes": ["remotion"] },
+        "sort": { "equals": "stars" }
+      }
+    },
+    {
+      "id": "skills-renderers-any",
+      "prompt": "Skills that render with HyperFrames or Manim.",
+      "tool": "search-directory",
+      "args": {
+        "section": { "equals": "skills" },
+        "filters": { "set": ["hyperframes", "manim"] }
+      }
+    },
+    {
+      "id": "tools-pricing",
+      "prompt": "List free motion design tools.",
+      "tool": "search-directory",
+      "args": {
+        "section": { "equals": "tools" },
+        "filters": { "includes": ["free"] }
+      }
+    },
+    {
+      "id": "tools-pricing-category",
+      "prompt": "Open-source video editors I can use.",
+      "tool": "search-directory",
+      "args": {
+        "section": { "equals": "tools" },
+        "filters": { "includes": ["open-source"] }
+      }
+    },
+    {
+      "id": "creatives-specialty",
+      "prompt": "Which studios can I hire for a product launch film?",
+      "tool": "search-directory",
+      "args": {
+        "section": { "equals": "creatives" },
+        "filters": { "includes": ["product-films"] }
+      }
+    },
+    {
+      "id": "designers-ui-motion",
+      "prompt": "Find designers who specialise in UI motion.",
+      "tool": "search-directory",
+      "args": {
+        "section": { "equals": "creatives" },
+        "filters": { "includes": ["ui-motion"] }
+      }
+    },
+    {
+      "id": "extras-newest",
+      "prompt": "Latest articles about AI motion design, newest first.",
+      "tool": "search-directory",
+      "args": {
+        "section": { "equals": "extras" },
+        "sort": { "equals": "newest" }
+      }
+    },
+    {
+      "id": "extras-prompt-libraries",
+      "prompt": "Are there prompt libraries for motion videos?",
+      "tool": "search-directory",
+      "args": {
+        "section": { "equals": "extras" },
+        "filters": { "match": "library|prompts" }
+      }
+    },
+    {
+      "id": "list-categories",
+      "prompt": "Which video categories does MotionVideo have?",
+      "tool": "list-filters",
+      "args": {}
+    },
+    {
+      "id": "list-models",
+      "prompt": "Which AI models are in the MotionVideo catalog, and how many videos each?",
+      "tool": "list-filters",
+      "args": {}
+    },
+    {
+      "id": "move-families",
+      "prompt": "What families of motion moves are there?",
+      "tool": "list-filters",
+      "args": {}
+    }
+  ]
+}
