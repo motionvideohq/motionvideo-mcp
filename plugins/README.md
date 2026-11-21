@@ -84,6 +84,7 @@ The four catalog tools work anonymously. The catalog resources and the `remix-vi
 - `list-bookmarks` — the user's saved videos, tools, studios, skills, and resources, newest first (optional `kind` filter).
 - `my-featured` — the user's community submissions that were featured in the catalog, with links to the featured entries.
 - `search-moves` and `get-move-prompt` — the Moves library's copy-ready prompts, for accounts with an active MotionVideo Pro or Business plan, or a Business seat (seats are linked by email). Signed in without a plan, both return an error pointing to [motionvideo.xyz/pro](https://motionvideo.xyz/pro).
+- `search-launch-scenes`, `get-launch-prompt` and `compose-launch-prompt` — Launch Videos: search launch films and scenes, compile a film or scene into a Remotion, HyperFrames, Editframe or fframes prompt (exact or adapted to the user's brand), and compose scenes from several films into one storyboard. They need a plan with Launch Videos (every lifetime plan and current-price subscriptions); an older subscription gets an error pointing to [motionvideo.xyz/dashboard/billing](https://motionvideo.xyz/dashboard/billing).
 
 The configured flow, for reviewers:
 

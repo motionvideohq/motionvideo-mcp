@@ -26,12 +26,15 @@ const SITE = (
 ).replace(/\/+$/u, "");
 const ISSUER = `${SITE}/api/auth`;
 const EXPECTED_TOOLS = [
+  "compose-launch-prompt",
+  "get-launch-prompt",
   "get-move-prompt",
   "get-video",
   "list-bookmarks",
   "list-filters",
   "my-featured",
   "search-directory",
+  "search-launch-scenes",
   "search-moves",
   "search-videos",
 ];

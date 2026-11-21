@@ -202,6 +202,37 @@
       "prompt": "What families of motion moves are there?",
       "tool": "list-filters",
       "args": {}
+    },
+    {
+      "id": "launch-search-cta-scenes",
+      "prompt": "Find me CTA scenes from launch videos that I could reuse.",
+      "tool": "search-launch-scenes",
+      "args": {
+        "view": { "equals": "scenes" },
+        "roles": { "includes": ["cta"] }
+      }
+    },
+    {
+      "id": "launch-exact-remotion",
+      "prompt": "Give me a Remotion prompt that recreates the launch film with slug motionvideo-launch exactly.",
+      "tool": "get-launch-prompt",
+      "args": {
+        "filmSlug": { "equals": "motionvideo-launch" },
+        "mode": { "equals": "exact" },
+        "renderer": { "equals": "remotion" }
+      }
+    },
+    {
+      "id": "launch-compose-adapt",
+      "prompt": "Combine launch scenes motionvideo-launch/problem and motionvideo-cinematic/gallery into one HyperFrames storyboard adapted to my brand Acme.",
+      "tool": "compose-launch-prompt",
+      "args": {
+        "sceneIds": {
+          "set": ["motionvideo-launch/problem", "motionvideo-cinematic/gallery"]
+        },
+        "mode": { "equals": "adapt" },
+        "renderer": { "equals": "hyperframes" }
+      }
     }
   ]
 }
