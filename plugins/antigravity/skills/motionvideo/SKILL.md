@@ -24,3 +24,12 @@ Use these when the user wants a specific motion technique (an easing, a kinetic-
 3. Fill in the bracketed placeholders from the user's brief, keep the parameters within their listed ranges unless the user asks otherwise, and link the move's page (`pageUrl`).
 
 These tools sign the user in with their motionvideo.xyz account (the client offers that on first use) and need a MotionVideo Pro or Business plan on that account; Business seat holders are included. If they say the account has no plan, tell the user once: get Pro at https://motionvideo.xyz/pro, then carry on with the free tools.
+
+## Launch Videos (MotionVideo Pro)
+
+Use these when the user wants to recreate a product launch film, adapt one to their brand, or build a storyboard from scenes of several films, for Remotion, HyperFrames, Editframe or fframes.
+
+1. `search-launch-scenes` with `view: "films"` to find whole films, or `view: "scenes"` with `roles` (hook, reveal, feature, cta...) and `styles` to find single scenes. Page with `cursor`.
+2. One film or scene: `get-launch-prompt` with `filmSlug` (and `sceneId` for one scene), `mode` and `renderer`. `exact` recreates it as made; `adapt` keeps structure and timing and swaps in the user's brand from `inputs`.
+3. A mix: `compose-launch-prompt` with up to 16 `sceneIds` in order, optional `joins` (`cut` or `bridge` with `frames`).
+4. In adapt mode, call once without `inputs`, read `slots` and `missing`, ask the user for the missing values, then call again with `inputs` (and `finalize: true` for a finished prompt). Pass the markdown prompt on unchanged and credit the source films.

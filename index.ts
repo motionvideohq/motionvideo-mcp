@@ -9,6 +9,11 @@
 export { listBookmarks, myFeatured } from "./src/tools/account.js";
 export { getVideo, searchVideos } from "./src/tools/catalog.js";
 export { searchDirectory } from "./src/tools/directory.js";
+export {
+  composeLaunchPrompt,
+  getLaunchPrompt,
+  searchLaunchScenes,
+} from "./src/tools/launch.js";
 export { listFilters } from "./src/tools/filters.js";
 export { getMovePrompt, searchMoves } from "./src/tools/pro.js";
 export { server as default } from "./src/mcp-server.js";

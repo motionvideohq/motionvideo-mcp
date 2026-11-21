@@ -2,7 +2,7 @@
 
 Search the [motionvideo.xyz](https://motionvideo.xyz) catalog of AI-made motion videos, pull the original prompts behind them, and browse the motion tools and studios around them — then adapt the prompts into your own motion design work.
 
-Bundled here: the MotionVideo MCP server (`search-videos`, `get-video`, `search-directory`, `list-filters`, plus the video gallery and detail views) and the `motionvideo` skill that teaches the search → pull prompt → adapt → credit workflow. Sign in with a motionvideo.xyz account that has [MotionVideo Pro or Business](https://motionvideo.xyz/pro), and `search-moves` and `get-move-prompt` add copy-ready prompts from the Moves library.
+Bundled here: the MotionVideo MCP server (`search-videos`, `get-video`, `search-directory`, `list-filters`, plus the video gallery and detail views) and the `motionvideo` skill that teaches the search → pull prompt → adapt → credit workflow. Sign in with a motionvideo.xyz account that has [MotionVideo Pro or Business](https://motionvideo.xyz/pro), and `search-moves` and `get-move-prompt` add copy-ready prompts from the Moves library; with Launch Videos on the plan, `search-launch-scenes`, `get-launch-prompt` and `compose-launch-prompt` turn real launch films into renderer prompts.
 
 ## Use it
 

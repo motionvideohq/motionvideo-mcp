@@ -25,7 +25,10 @@ const MISSING_SCOPE_MESSAGE =
 
 const NO_PLAN_MESSAGE = `This is a MotionVideo Pro tool, and the signed-in motionvideo.xyz account has no MotionVideo Pro or Business plan (Business seat holders are included). Get one at ${PRO_URL}, then try again.`;
 
-const errorBodySchema = z.object({ error: z.string() });
+const errorBodySchema = z.object({
+  error: z.string(),
+  message: z.string().optional(),
+});
 
 export type SiteResult =
   | { body: unknown }
@@ -35,12 +38,12 @@ export type SiteResult =
       status?: number;
     };
 
-/** The `error` code of a JSON error body, if the site sent one. */
-const readErrorCode = async (
+/** The `error` code and `message` of a JSON error body, if the site sent one. */
+const readErrorBody = async (
   response: Response
-): Promise<string | undefined> => {
+): Promise<z.infer<typeof errorBodySchema> | undefined> => {
   try {
-    return errorBodySchema.safeParse(await response.json()).data?.error;
+    return errorBodySchema.safeParse(await response.json()).data;
   } catch {
     return undefined;
   }
@@ -72,10 +75,19 @@ const describeFailure = async (response: Response): Promise<string> => {
     ) {
       return MISSING_SCOPE_MESSAGE;
     }
-    if ((await readErrorCode(response)) === "no_plan") {
+    const errorBody = await readErrorBody(response);
+    const code = errorBody?.error;
+    if (code === "no_plan") {
       return NO_PLAN_MESSAGE;
     }
     return "motionvideo.xyz refused this request for the signed-in account (HTTP 403).";
+  }
+  if (status === 404) {
+    return "motionvideo.xyz has no such item (HTTP 404); check the slug or id with a search tool.";
+  }
+  if (status === 422) {
+    const body = await readErrorBody(response);
+    return `motionvideo.xyz rejected the request (${body?.error ?? "invalid_request"})${body?.message ? `: ${body.message}` : ""}. Fix the arguments and try again.`;
   }
   if (status === 429) {
     const seconds = retryAfterSeconds(response.headers.get("retry-after"));
@@ -88,23 +100,34 @@ const describeFailure = async (response: Response): Promise<string> => {
 };
 
 /**
- * GET a signed-in `/api/mcp/*` endpoint. Stops after 10 seconds or as soon as
+ * GET (or POST `body` as JSON to) a signed-in `/api/mcp/*` endpoint. Stops after 10 seconds or as soon as
  * `signal` aborts (the MCP client cancelled or disconnected).
  */
 export const fetchSiteApi = async (
   path: string,
-  { accessToken, signal }: { accessToken: string; signal: AbortSignal }
+  {
+    accessToken,
+    body,
+    signal,
+  }: { accessToken: string; body?: unknown; signal: AbortSignal }
 ): Promise<SiteResult> => {
+  const headers = new Headers({
+    accept: "application/json",
+    authorization: `Bearer ${accessToken}`,
+    "user-agent": "motionvideo-mcp",
+  });
+  const init: RequestInit = {
+    headers,
+    signal: AbortSignal.any([AbortSignal.timeout(FETCH_TIMEOUT_MS), signal]),
+  };
+  if (body !== undefined) {
+    headers.set("content-type", "application/json");
+    init.body = JSON.stringify(body);
+    init.method = "POST";
+  }
   let response: Response;
   try {
-    response = await fetch(`${SITE_URL}${path}`, {
-      headers: {
-        accept: "application/json",
-        authorization: `Bearer ${accessToken}`,
-        "user-agent": "motionvideo-mcp",
-      },
-      signal: AbortSignal.any([AbortSignal.timeout(FETCH_TIMEOUT_MS), signal]),
-    });
+    response = await fetch(`${SITE_URL}${path}`, init);
   } catch (error) {
     if (signal.aborted) {
       return { error: "The request was cancelled." };

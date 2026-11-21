@@ -115,6 +115,7 @@ Droid, Antigravity, Kimi Code, Kiro, ZCode, MiMo Code, DeepSeek Harness, Pi and 
 | `search-videos`, `get-video`, `search-directory`, `list-filters` | Nothing |
 | `list-bookmarks`, `my-featured`, the resources and the `remix-video` prompt | A free motionvideo.xyz account |
 | `search-moves`, `get-move-prompt` | A [MotionVideo Pro or Business plan](https://motionvideo.xyz/pro) on that account, or a Business seat |
+| `search-launch-scenes`, `get-launch-prompt`, `compose-launch-prompt` | A [MotionVideo Pro or Business plan](https://motionvideo.xyz/pro) on that account, or a Business seat |
 
 The first call to a signed-in tool makes the client open motionvideo.xyz's sign-in and consent pages (OAuth 2.1 with dynamic client registration). There is nothing to copy or paste. Business seats are matched by the email you sign in with.
 
@@ -171,6 +172,14 @@ Several values in one filter are alternatives, and different filters all apply: 
 | --- | --- |
 | `search-moves` | Search the Moves library of named motion techniques by keyword and family (timing, type, transitions, ui, vector, generative, camera, texture, data, sound) |
 | `get-move-prompt` | One move's copy-ready prompt, the parameters worth tuning, and its page |
+
+### Launch Videos (Pro)
+
+| Tool | Description |
+| --- | --- |
+| `search-launch-scenes` | Search real product launch films, as films or single scenes: `query`, `view` (films, scenes), `roles`, `styles`, `aspect`, `minSeconds`, `maxSeconds`, `category`, `limit` (≤30), `cursor` |
+| `get-launch-prompt` | Compile one film (`filmSlug`) or scene (`sceneId`) into a frame-accurate prompt: `mode` (exact recreates it, adapt swaps in your brand), `renderer` (remotion, hyperframes, editframe, fframes), `inputs`, `aspect`, `fps`, `targetSeconds`, `finalize`. Returns the markdown prompt plus the frame timeline, slots, missing inputs, assets and warnings |
+| `compose-launch-prompt` | Mix 1–16 scenes (`sceneIds`) from different films into one storyboard prompt, with optional `versions` and `joins` (`cut` or `bridge` with `frames`); same options and result as `get-launch-prompt` |
 
 ### Account
 
