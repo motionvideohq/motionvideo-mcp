@@ -25,7 +25,7 @@ const moveSummarySchema = z.object({
 
 export const searchMoves = server.tool(
   {
-    annotations: readOnly,
+    annotations: { ...readOnly, title: "Search motion moves (Pro)" },
     description:
       "MotionVideo Pro: search the motionvideo.xyz Moves library of named motion techniques (easing, kinetic type, transitions, UI motion, camera moves, and more) by keyword and/or family. Returns names, families, summaries, and slugs for get-move-prompt. Signs in with the user's motionvideo.xyz account (the client offers that on first use) and needs a MotionVideo Pro or Business plan on it.",
     inputSchema: z.object({
@@ -112,7 +112,7 @@ export const searchMoves = server.tool(
 
 export const getMovePrompt = server.tool(
   {
-    annotations: readOnly,
+    annotations: { ...readOnly, title: "Get a move prompt (Pro)" },
     description:
       "MotionVideo Pro: fetch the copy-ready prompt for one move from the motionvideo.xyz Moves library, with its tunable parameters and page URL. Signs in with the user's motionvideo.xyz account (the client offers that on first use) and needs a MotionVideo Pro or Business plan on it.",
     inputSchema: z.object({

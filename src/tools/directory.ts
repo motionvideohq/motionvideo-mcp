@@ -21,7 +21,7 @@ const SECTION_LABELS = {
 
 export const searchDirectory = server.tool(
   {
-    annotations: readOnly,
+    annotations: { ...readOnly, title: "Search the directories" },
     description:
       'Search a motionvideo.xyz directory section: "tools" (editors, AI generators, mockups; filter by pricing: free, freemium, open-source, paid), "skills" (agent skills that make videos; filter by renderer: remotion, hyperframes, html, manim, adobe, blender, video-models, ffmpeg; sort by stars or updated), "creatives" (studios and designers for hire; filter by specialty: product-films, explainers, 3d, brand, ui-motion) or "extras" (articles and resources; filter by resource type). Several filters or categories are alternatives. list-filters shows each section\'s categories, filters and sorts with counts.',
     inputSchema: z.strictObject({

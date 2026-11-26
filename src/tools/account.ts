@@ -57,7 +57,7 @@ const loadAccountData = async <T extends z.ZodType>(
 
 export const listBookmarks = server.tool(
   {
-    annotations: readOnly,
+    annotations: { ...readOnly, title: "List my bookmarks" },
     description:
       "List the signed-in user's motionvideo.xyz bookmarks: saved motion videos, tools, studios, skills, and resources, newest first. Signs in with the user's MotionVideo account; the client offers that on first use.",
     inputSchema: z.object({
@@ -108,7 +108,7 @@ export const listBookmarks = server.tool(
 
 export const myFeatured = server.tool(
   {
-    annotations: readOnly,
+    annotations: { ...readOnly, title: "My featured submissions" },
     description:
       "List the signed-in user's motionvideo.xyz community submissions that were featured in the catalog, newest first, with links to the featured entries. Signs in with the user's MotionVideo account; the client offers that on first use.",
     inputSchema: z.object({}),

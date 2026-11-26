@@ -14,7 +14,7 @@ const counted = (values: { id: string; count: number }[]) =>
 
 export const listFilters = server.tool(
   {
-    annotations: readOnly,
+    annotations: { ...readOnly, title: "List search filters" },
     description:
       "List every filter value on motionvideo.xyz with how many items carry it: video categories (with descriptions), models, named colours and types for search-videos; each directory section's filters, categories and sorts for search-directory; and the move families for search-moves. Call it when unsure which values exist.",
     inputSchema: z.strictObject({
