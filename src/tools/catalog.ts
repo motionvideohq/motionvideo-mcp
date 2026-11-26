@@ -257,7 +257,7 @@ const toQuery = (input: SearchInput): VideoSearchQuery => ({
 
 export const searchVideos = server.tool(
   {
-    annotations: readOnly,
+    annotations: { ...readOnly, title: "Search motion videos" },
     description:
       'Search the motionvideo.xyz catalog of AI-made motion videos by keywords, content categories, models, named colours, creators and type, sorted newest or oldest, a page at a time. Several values in one filter are alternatives (colors ["red","orange"] = red or orange); different filters all apply ("Opus 5.5 videos in product UI" = models ["Opus 5.5"] + categories ["product-ui"]). The answer states which filters were applied, what each resolved to, and, when nothing matches, how many videos each filter matches alone. Results include preview and full MP4 links plus the page URL.',
     inputSchema: searchInputSchema,
@@ -350,7 +350,7 @@ const madeWith = (video: VideoDetail) =>
 
 export const getVideo = server.tool(
   {
-    annotations: readOnly,
+    annotations: { ...readOnly, title: "Get a motion video" },
     description:
       "Fetch one motionvideo.xyz catalog entry: the original prompt behind the video, how it was made (model, effort, iterations, stack), live media links, its neighbours and the five most similar videos to keep exploring.",
     inputSchema: z.object({
